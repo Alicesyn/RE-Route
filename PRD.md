@@ -165,6 +165,7 @@ interface DayRoute {
   totalDistance: number;
   totalTime: number;
 }
+```
 
 ## 5. UI Layout
 [Header: Logo | Mode Toggle | Save | Import | Export PDF]
@@ -181,45 +182,48 @@ interface DayRoute {
 └── ...
 
 ## 6. Success Metrics
-Metric	Target
-Time to first optimized itinerary	< 5 minutes
-Travel time reduction vs manual	40%
-Error-free completion	95%
 
-7. Out of Scope (V1)
-Mobile app
+| Metric | Target |
+|--------|--------|
+| Time to first optimized itinerary | < 5 minutes |
+| Travel time reduction vs manual | 40% |
+| Error-free completion | 95% |
 
-User accounts / authentication
-
-Collaborative editing
-
-Flight/hotel booking
-
-Offline maps
-
-Real-time traffic
+## 7. Out of Scope (V1)
+- Mobile app (Native iOS/Android)
+- User accounts / authentication
+- Collaborative real-time editing
+- Direct flight/hotel booking integration
+- Offline maps
+- Real-time traffic data integration
 
 ## 8. Technical Constraints
-Constraint	Details
-Budget	$0
-Deployment	Vercel + optional Render
-Storage	localStorage (MVP)
-API keys	Google Maps demo key only
-Browser	ES2020+
+
+| Constraint | Details |
+|------------|---------|
+| Budget | $0 |
+| Deployment | Vercel |
+| Storage | localStorage (MVP Snapshots) |
+| API keys | Google Maps (optional client-side) |
+| Browser | ES2020+ (Modern browsers only) |
 
 ## 9. API Keys (Development)
-Service	Key / Notes
-Google Maps Demo	AIzaSyC5Zs7UYjPClnw6YjP3vZxP3X5L7vT9kA4
-Google Maps Usage	Rate limited, localhost only
-OpenAI	User provides own key
+
+| Service | Key / Notes |
+|---------|-------------|
+| Google Maps | User provides own key for Real Mode |
+| Google Maps Usage | Rate limited, localhost allowed |
+| OpenAI/Anthropic | Mocked for V1 (User provides own key for roadmap) |
 
 ## 10. Timeline
-Phase	Duration	Deliverables
-Phase 1: Core UI + Mock	3-4 days	Search, list, inline edit, map
-Phase 2: Hotels + Days	1-2 days	Multi-day hotels, day selector
-Phase 3: TSP Optimization	2-3 days	Clustering, 2-opt, schedule
-Phase 4: Import + Export	1-2 days	Paste import, PDF
-Phase 5: Real Mode + Polish	2 days	Google Maps, mode toggle
+
+| Phase | Duration | Deliverables |
+|-------|----------|--------------|
+| Phase 1: Core UI + Mock | 3-4 days | Search, list, inline edit, map [Done] |
+| Phase 2: Hotels + Days | 1-2 days | Multi-day hotels, day selector [Done] |
+| Phase 3: TSP Optimization | 2-3 days | Clustering, 2-opt, schedule [Done] |
+| Phase 4: Import + Export | 1-2 days | Paste import, PDF [Done] |
+| Phase 5: Persistence + Polish | 2 days | Snapshot system, Mode toggle [Done] |
 Total	10-13 days	V1 complete
 
 ## 12. Future Roadmap (Post-V1)
@@ -241,9 +245,11 @@ Total	10-13 days	V1 complete
 
 ---
 
-## 13. Risks & Mitigations (Updated)
-Risk	Mitigation
-TSP too slow for >15 places	Early exit, limit per day (Implemented)
-Google Maps rate limit	Mock mode default (Implemented)
-Inline edit + drag conflict	Visual indicators and lock-out during drag (Implemented)
-Import parsing fails	Graceful degradation, manual input fallback (Implemented)
+## 11. Risks & Mitigations (Updated)
+
+| Risk | Mitigation |
+|------|------------|
+| TSP too slow for >15 places | Early exit, limit per day (Implemented) |
+| Google Maps rate limit | Mock mode default (Implemented) |
+| Inline edit + drag conflict | Visual indicators and lock-out during drag (Implemented) |
+| Import parsing fails | Graceful degradation, manual input fallback (Implemented) |
