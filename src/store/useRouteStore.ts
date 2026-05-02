@@ -42,7 +42,7 @@ interface RouteState {
 export const useRouteStore = create<RouteState>()(
   persist(
     (set) => ({
-      title: 'My Awesome Trip',
+      title: 'My Re:Route Trip',
       days: 3,
       travelMode: 'driving',
       places: [],
@@ -140,7 +140,7 @@ export const useRouteStore = create<RouteState>()(
       }),
     }),
     {
-      name: 'routewise-storage',
+      name: 'reroute-storage',
     }
   )
 );

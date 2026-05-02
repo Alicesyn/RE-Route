@@ -1,8 +1,8 @@
-# 🗺️ RouteWise - Travel Itinerary Optimizer
+# 🗺️ Re:Route - Travel Itinerary Optimizer
 
-RouteWise is a modern travel planning application designed to help travelers build, optimize, and share their itineraries. It features a powerful route optimization engine that solves the "Traveling Salesperson Problem" (TSP) to minimize travel time between destinations.
+Re:Route is a modern travel planning application designed to help travelers build, optimize, and share their itineraries. It features a powerful route optimization engine that solves the "Traveling Salesperson Problem" (TSP) to minimize travel time between destinations.
 
-![RouteWise Preview](https://via.placeholder.com/1200x600?text=RouteWise+Travel+Itinerary+Optimizer)
+![Re:Route Preview](https://via.placeholder.com/1200x600?text=Re:Route+Travel+Itinerary+Optimizer)
 
 ## ✨ Features
 
@@ -38,8 +38,8 @@ RouteWise is a modern travel planning application designed to help travelers bui
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/Alicesyn/RouteWise.git
-   cd RouteWise
+   git clone https://github.com/Alicesyn/Re-Route.git
+   cd Re-Route
    ```
 
 2. **Install dependencies**
