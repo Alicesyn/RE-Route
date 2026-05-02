@@ -3,7 +3,8 @@
 
 | Document Version | 1.0 |
 | Product Name | RouteWise |
-| Status | Draft / In Development |
+| Status | Active Development / Beta |
+| Implementation | 90% Complete (V1) |
 
 ---
 
@@ -14,8 +15,10 @@ RouteWise is a web-based travel planning application that helps users create opt
 **Key Differentiators:**
 - Hotel-per-day flexibility
 - Multi-modal route optimization (walking, transit, driving)
-- Zero-cost development (mock mode + Google Maps demo key)
-- Inline editable descriptions (click to edit, click out to save)
+- Zero-cost development (mock mode by default)
+- Inline editable descriptions (click to edit, auto-save on blur)
+- Clean, print-optimized export interface
+- Multi-trip persistence (Snapshots)
 
 ---
 
@@ -82,10 +85,11 @@ RouteWise is a web-based travel planning application that helps users create opt
 ### FR-08: Save, Load, Export
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| FR-31 | Save to localStorage | P0 |
-| FR-32 | Load saved itineraries | P0 |
-| FR-33 | Export as PDF | P1 |
-| FR-34 | Shareable link | P2 |
+| FR-31 | Save/Load snapshots to localStorage | P0 [Done] |
+| FR-32 | Multi-trip management (snapshot system) | P0 [Done] |
+| FR-33 | Export as print-optimized PDF | P1 [Done] |
+| FR-34 | Export as Place List (TXT) | P1 [Done] |
+| FR-35 | Shareable link (JSON export/import) | P2 [Done] |
 
 ### FR-09: Mock vs Real Mode
 | ID | Requirement | Priority |
@@ -218,9 +222,28 @@ Phase 4: Import + Export	1-2 days	Paste import, PDF
 Phase 5: Real Mode + Polish	2 days	Google Maps, mode toggle
 Total	10-13 days	V1 complete
 
-## 11. Risks
+## 12. Future Roadmap (Post-V1)
+
+### 🚀 High Impact
+- **Real AI Integration**: Swap mock AI with live OpenAI/Anthropic API calls for accurate destination facts.
+- **Collaborative Planning**: Real-time multi-user editing using WebSockets or Supabase.
+- **Detailed Navigation**: Step-by-step transit directions and real-time traffic integration.
+
+### 🎨 UX & Design
+- **Dark Mode Support**: Full system-wide dark theme.
+- **Custom Map Styles**: Allow users to choose different map providers (Stadia, Mapbox).
+- **Mobile PWA**: Enable "Add to Home Screen" with offline data caching.
+
+### 💰 Travel Tools
+- **Budget Tracker**: Track estimated vs actual costs per place and day.
+- **Booking Integration**: Direct links to Booking.com, Viator, or Airbnb for confirmed locations.
+- **Weather Integration**: Forecast-based activity suggestions.
+
+---
+
+## 13. Risks & Mitigations (Updated)
 Risk	Mitigation
-TSP too slow for >15 places	Early exit, limit per day
-Google Maps rate limit	Mock mode default, show warning
-Inline edit + drag conflict	Disable edit while dragging
-Import parsing fails	Show failures, manual correction
+TSP too slow for >15 places	Early exit, limit per day (Implemented)
+Google Maps rate limit	Mock mode default (Implemented)
+Inline edit + drag conflict	Visual indicators and lock-out during drag (Implemented)
+Import parsing fails	Graceful degradation, manual input fallback (Implemented)
