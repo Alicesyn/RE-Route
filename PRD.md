@@ -1,8 +1,8 @@
 # Product Requirements Document (PRD)
-## Re:Route - Travel Itinerary Optimizer
+## RE:Route - Travel Itinerary Optimizer
 
 | Document Version | 1.0 |
-| Product Name | Re:Route |
+| Product Name | RE:Route |
 | Status | Active Development / Beta |
 | Implementation | 90% Complete (V1) |
 
@@ -10,7 +10,7 @@
 
 ## 1. Executive Summary
 
-Re:Route is a web-based travel planning application that helps users create optimized multi-day itineraries. Users input places, specify different hotels per day, select travel mode (walking/transit/driving), and the app uses TSP algorithms to minimize travel distance each day.
+RE:Route is a web-based travel planning application that helps users create optimized multi-day itineraries. Users input places, specify different hotels per day, select travel mode (walking/transit/driving), and the app uses TSP algorithms to minimize travel distance each day.
 
 **Key Differentiators:**
 - Hotel-per-day flexibility

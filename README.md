@@ -1,8 +1,8 @@
-# 🗺️ Re:Route - Travel Itinerary Optimizer
+# 🗺️ RE:Route - Travel Itinerary Optimizer
 
-Re:Route is a modern travel planning application designed to help travelers build, optimize, and share their itineraries. It features a powerful route optimization engine that solves the "Traveling Salesperson Problem" (TSP) to minimize travel time between destinations.
+RE:Route is a modern travel planning application designed to help travelers build, optimize, and share their itineraries. It features a powerful route optimization engine that solves the "Traveling Salesperson Problem" (TSP) to minimize travel time between destinations.
 
-![Re:Route Preview](https://via.placeholder.com/1200x600?text=Re:Route+Travel+Itinerary+Optimizer)
+![RE:Route Preview](https://via.placeholder.com/1200x600?text=RE:Route+Travel+Itinerary+Optimizer)
 
 ## ✨ Features
 
@@ -38,8 +38,8 @@ Re:Route is a modern travel planning application designed to help travelers buil
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/Alicesyn/Re-Route.git
-   cd Re-Route
+   git clone https://github.com/Alicesyn/RE-Route.git
+   cd RE-Route
    ```
 
 2. **Install dependencies**
