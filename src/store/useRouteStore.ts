@@ -55,6 +55,15 @@ export const useRouteStore = create<RouteState>()(
       setDays: (days) => set((state) => {
         // Adjust hotels array if days shrink
         const newHotels = state.hotels.filter(h => h.dayIndex < days);
+        // If a hotel exists for day 0, propagate it to any new days that don't have one
+        const baseHotel = state.hotels.find(h => h.dayIndex === 0);
+        if (baseHotel) {
+          for (let i = 0; i < days; i++) {
+            if (!newHotels.find(h => h.dayIndex === i)) {
+              newHotels.push({ ...baseHotel, dayIndex: i });
+            }
+          }
+        }
         // Reset dayIndex on places that exceed the new days limit
         const newPlaces = state.places.map(p => 
           p.dayIndex !== null && p.dayIndex >= days ? { ...p, dayIndex: null, orderInDay: null } : p

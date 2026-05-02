@@ -89,7 +89,7 @@ export const MapView: React.FC = () => {
               
               {/* Start Hotel Marker */}
               {route.startHotel && (
-                <Marker position={[route.startHotel.lat, route.startHotel.lng]}>
+                <Marker key={`start-hotel-${i}`} position={[route.startHotel.lat, route.startHotel.lng]}>
                   <Popup>
                     <h3 className="font-bold text-sm">Day {route.day+1} Start: {route.startHotel.name}</h3>
                   </Popup>
@@ -98,7 +98,7 @@ export const MapView: React.FC = () => {
               
               {/* End Hotel Marker (if different) */}
               {route.endHotel && (!route.startHotel || route.startHotel.name !== route.endHotel.name) && (
-                <Marker position={[route.endHotel.lat, route.endHotel.lng]}>
+                <Marker key={`end-hotel-${i}`} position={[route.endHotel.lat, route.endHotel.lng]}>
                   <Popup>
                     <h3 className="font-bold text-sm">Day {route.day+1} End: {route.endHotel.name}</h3>
                   </Popup>

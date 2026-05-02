@@ -23,8 +23,8 @@ function clusterPlaces(places: Place[], hotels: Hotel[], days: number): Place[] 
           closestDay = i;
         }
       } else {
-        // If no hotel assigned to this day, just assign cyclically
-        closestDay = Math.floor(Math.random() * days);
+        // No hotel for this day — fall back to even cyclic distribution
+        closestDay = place.id.charCodeAt(place.id.length - 1) % days;
       }
     }
     
@@ -130,11 +130,11 @@ export function solveTSP(places: Place[], hotels: Hotel[], days: number, travelM
     const segments: { distance: number, time: number }[] = [];
     
     for (let i = 0; i < points.length - 1; i++) {
-      const d = getDistance(points[i].lat, points[i].lng, points[i+1].lat, points[i+1].lng);
-      dayDist += d;
+      const segDist = getDistance(points[i].lat, points[i].lng, points[i+1].lat, points[i+1].lng);
+      dayDist += segDist;
       segments.push({
-        distance: d,
-        time: estimateTime(d, travelMode)
+        distance: segDist,
+        time: estimateTime(segDist, travelMode)
       });
     }
     
