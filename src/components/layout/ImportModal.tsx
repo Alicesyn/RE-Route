@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Upload } from 'lucide-react';
 import { useRouteStore } from '../../store/useRouteStore';
+import { autoCategorize, getDefaultDuration } from '../../utils/categoryUtils';
 
 interface ImportModalProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose }) => 
     const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
     
     lines.forEach((line) => {
+      const category = autoCategorize(line);
       // Create a mock place for each imported line
       addPlace({
         id: `p_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -26,6 +28,8 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose }) => 
         lng: -73.9855 + (Math.random() * 0.1 - 0.05),
         description: '',
         descriptionSource: 'user',
+        category,
+        estimatedDuration: getDefaultDuration(category),
       });
     });
     

@@ -18,7 +18,7 @@ export const MOCK_HOTELS: Hotel[] = [
   }
 ];
 
-export const MOCK_PLACES: Omit<Place, 'dayIndex' | 'orderInDay'>[] = [
+export const MOCK_PLACES: Omit<Place, 'dayIndex' | 'orderInDay' | 'pinnedToDay'>[] = [
   {
     id: 'm1',
     name: 'Central Park',
@@ -27,6 +27,8 @@ export const MOCK_PLACES: Omit<Place, 'dayIndex' | 'orderInDay'>[] = [
     lng: -73.9665,
     description: 'Vast urban park with walking paths, a zoo, and scenic spots.',
     descriptionSource: 'mock',
+    category: 'park',
+    estimatedDuration: 75,
   },
   {
     id: 'm2',
@@ -36,6 +38,8 @@ export const MOCK_PLACES: Omit<Place, 'dayIndex' | 'orderInDay'>[] = [
     lng: -73.9855,
     description: 'Bustling destination in the heart of the Theater District known for bright lights.',
     descriptionSource: 'mock',
+    category: 'landmark',
+    estimatedDuration: 45,
   },
   {
     id: 'm3',
@@ -45,6 +49,8 @@ export const MOCK_PLACES: Omit<Place, 'dayIndex' | 'orderInDay'>[] = [
     lng: -73.9857,
     description: 'Iconic art deco skyscraper offering observation decks and city views.',
     descriptionSource: 'mock',
+    category: 'landmark',
+    estimatedDuration: 60,
   },
   {
     id: 'm4',
@@ -54,6 +60,8 @@ export const MOCK_PLACES: Omit<Place, 'dayIndex' | 'orderInDay'>[] = [
     lng: -74.0445,
     description: 'Colossal copper statue on Liberty Island, a symbol of freedom.',
     descriptionSource: 'mock',
+    category: 'landmark',
+    estimatedDuration: 120,
   },
   {
     id: 'm5',
@@ -63,6 +71,8 @@ export const MOCK_PLACES: Omit<Place, 'dayIndex' | 'orderInDay'>[] = [
     lng: -73.9632,
     description: 'One of the worlds largest and finest art museums.',
     descriptionSource: 'mock',
+    category: 'museum',
+    estimatedDuration: 180,
   },
   {
     id: 'm6',
@@ -72,6 +82,8 @@ export const MOCK_PLACES: Omit<Place, 'dayIndex' | 'orderInDay'>[] = [
     lng: -73.9969,
     description: 'Historic suspension bridge connecting Manhattan and Brooklyn.',
     descriptionSource: 'mock',
+    category: 'landmark',
+    estimatedDuration: 45,
   },
   {
     id: 'm7',
@@ -81,5 +93,7 @@ export const MOCK_PLACES: Omit<Place, 'dayIndex' | 'orderInDay'>[] = [
     lng: -74.0048,
     description: 'Elevated linear park, greenway and rail trail created on a former New York Central Railroad spur.',
     descriptionSource: 'mock',
+    category: 'park',
+    estimatedDuration: 60,
   }
 ];

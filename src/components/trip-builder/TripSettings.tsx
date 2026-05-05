@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Building2, Calendar, Car, Footprints, Train } from 'lucide-react';
+import { Building2, Calendar, Car, Footprints, Train, Clock } from 'lucide-react';
 import { useRouteStore } from '../../store/useRouteStore';
 import { MOCK_HOTELS } from '../../services/mockData';
 import { TravelMode } from '../../types';
@@ -9,6 +9,7 @@ export const TripSettings: React.FC = () => {
   const { 
     days, setDays, 
     travelMode, setTravelMode,
+    dailyBudget, setDailyBudget,
     hotels, setHotelForDay, applyHotelToAllDays,
     appMode
   } = useRouteStore();
@@ -35,8 +36,11 @@ export const TripSettings: React.FC = () => {
     ? MOCK_HOTELS.findIndex(h => h.name === hotels.find(h => h.dayIndex === 0)?.name)
     : '';
 
+  const budgetHours = Math.floor(dailyBudget / 60);
+  const budgetMins = dailyBudget % 60;
+
   return (
-    <div className="bg-white rounded-xl border border-surface-200 p-5 shadow-sm space-y-6">
+    <div className="bg-white rounded-xl border border-surface-200 p-5 shadow-sm space-y-6 overflow-visible">
       
       {/* Travel Mode */}
       <div>
@@ -81,6 +85,34 @@ export const TripSettings: React.FC = () => {
           </div>
         </div>
 
+        {/* Daily Time Budget */}
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <label className="flex items-center gap-1.5 text-sm text-surface-700 font-medium">
+              <Clock className="w-4 h-4 text-surface-400" />
+              Daily Time Budget
+            </label>
+            <span className="text-sm font-semibold text-primary-600 bg-primary-50 px-2 py-0.5 rounded-md">
+              {budgetHours}h{budgetMins > 0 ? ` ${budgetMins}m` : ''}
+            </span>
+          </div>
+          <input
+            type="range"
+            min={360}
+            max={960}
+            step={30}
+            value={dailyBudget}
+            onChange={(e) => setDailyBudget(parseInt(e.target.value))}
+            className="w-full h-2 bg-surface-200 rounded-lg appearance-none cursor-pointer accent-primary-600"
+          />
+          <div className="flex justify-between text-[10px] text-surface-400 mt-1">
+            <span>6h</span>
+            <span>9h</span>
+            <span>12h</span>
+            <span>16h</span>
+          </div>
+        </div>
+
         <div className="space-y-4">
           <label className="flex items-center gap-2 text-sm text-surface-700 cursor-pointer">
             <input 
@@ -117,7 +149,7 @@ export const TripSettings: React.FC = () => {
               )}
             </div>
           ) : (
-            <div className="space-y-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+            <div className="space-y-3 pb-2">
               {Array.from({ length: days }).map((_, i) => {
                 const dayHotelIndex = hotels.find(h => h.dayIndex === i)
                   ? MOCK_HOTELS.findIndex(h => h.name === hotels.find(h => h.dayIndex === i)?.name)

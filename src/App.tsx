@@ -10,15 +10,38 @@ import { Wand2, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
 import { useState } from 'react';
 
 function App() {
-  const { places, hotels, days, travelMode, setOptimizedRoutes, clearAll, appMode, updatePlacesBulk } = useRouteStore();
+  const { places, hotels, days, travelMode, dailyBudget, setOptimizedRoutes, clearAll, appMode, updatePlacesBulk } = useRouteStore();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
 
   const handleOptimize = () => {
     if (places.length === 0) return;
-    const result = solveTSP(places, hotels, days, travelMode);
+    const result = solveTSP(places, hotels, days, travelMode, dailyBudget);
     if (result.success) {
       setOptimizedRoutes(result.days);
+      
+      // Update places with their optimizer-assigned days and order
+      const placeUpdates: {id: string, updates: Partial<typeof places[0]>}[] = [];
+      result.days.forEach((dayRoute) => {
+        dayRoute.stops.forEach((stop, idx) => {
+          const originalPlace = places.find(p => p.id === stop.id);
+          // Only update dayIndex for non-pinned places or if orderInDay changed
+          if (originalPlace) {
+            placeUpdates.push({
+              id: stop.id,
+              updates: {
+                dayIndex: dayRoute.day,
+                orderInDay: idx,
+                // Preserve pinnedToDay: if user pinned it, keep it pinned
+                pinnedToDay: originalPlace.pinnedToDay,
+              }
+            });
+          }
+        });
+      });
+      if (placeUpdates.length > 0) {
+        updatePlacesBulk(placeUpdates);
+      }
     }
   };
 

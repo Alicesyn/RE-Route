@@ -1,19 +1,23 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Trash2, MapPin } from 'lucide-react';
-import { Place } from '../../types';
+import { GripVertical, Trash2, MapPin, Pin, Clock } from 'lucide-react';
+import { Place, PlaceCategory } from '../../types';
 import { useRouteStore } from '../../store/useRouteStore';
+import { getCategoryEmoji, getCategoryLabel, getDefaultDuration, ALL_CATEGORIES } from '../../utils/categoryUtils';
 
 interface PlaceItemProps {
   place: Place;
 }
 
 export const PlaceItem: React.FC<PlaceItemProps> = ({ place }) => {
-  const { updatePlace, removePlace } = useRouteStore();
+  const { updatePlace, removePlace, assignPlaceToDay, unassignPlace, days } = useRouteStore();
   const [isEditing, setIsEditing] = useState(false);
   const [desc, setDesc] = useState(place.description || '');
+  const [isEditingDuration, setIsEditingDuration] = useState(false);
+  const [durationVal, setDurationVal] = useState(place.estimatedDuration.toString());
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const durationRef = useRef<HTMLInputElement>(null);
 
   const {
     attributes,
@@ -32,11 +36,17 @@ export const PlaceItem: React.FC<PlaceItemProps> = ({ place }) => {
   useEffect(() => {
     if (isEditing && textareaRef.current) {
       textareaRef.current.focus();
-      // Auto-resize textarea
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
     }
   }, [isEditing]);
+
+  useEffect(() => {
+    if (isEditingDuration && durationRef.current) {
+      durationRef.current.focus();
+      durationRef.current.select();
+    }
+  }, [isEditingDuration]);
 
   const handleSave = () => {
     setIsEditing(false);
@@ -56,6 +66,50 @@ export const PlaceItem: React.FC<PlaceItemProps> = ({ place }) => {
     }
   };
 
+  const handleDurationSave = () => {
+    setIsEditingDuration(false);
+    const parsed = parseInt(durationVal);
+    if (!isNaN(parsed) && parsed > 0 && parsed !== place.estimatedDuration) {
+      updatePlace(place.id, { estimatedDuration: parsed });
+    } else {
+      setDurationVal(place.estimatedDuration.toString());
+    }
+  };
+
+  const handleDayChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    if (val === '') {
+      unassignPlace(place.id);
+    } else {
+      assignPlaceToDay(place.id, parseInt(val));
+    }
+  };
+
+  const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newCat = e.target.value as PlaceCategory;
+    updatePlace(place.id, { 
+      category: newCat, 
+      estimatedDuration: getDefaultDuration(newCat) 
+    });
+    setDurationVal(getDefaultDuration(newCat).toString());
+  };
+
+  // Day badge colors
+  const dayColors = [
+    'bg-blue-50 text-blue-700 border-blue-200',
+    'bg-emerald-50 text-emerald-700 border-emerald-200',
+    'bg-amber-50 text-amber-700 border-amber-200',
+    'bg-purple-50 text-purple-700 border-purple-200',
+    'bg-rose-50 text-rose-700 border-rose-200',
+    'bg-cyan-50 text-cyan-700 border-cyan-200',
+    'bg-orange-50 text-orange-700 border-orange-200',
+  ];
+
+  const getBadgeColor = (dayIndex: number | null) => {
+    if (dayIndex === null) return 'bg-surface-100 text-surface-500 border-surface-200';
+    return dayColors[dayIndex % dayColors.length];
+  };
+
   return (
     <div
       ref={setNodeRef}
@@ -73,22 +127,88 @@ export const PlaceItem: React.FC<PlaceItemProps> = ({ place }) => {
         </div>
 
         <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-4">
-            <div>
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-surface-900 flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-primary-500" />
-                {place.name}
+                <MapPin className="w-4 h-4 text-primary-500 shrink-0" />
+                <span className="truncate">{place.name}</span>
               </h3>
-              <p className="text-xs text-surface-500 mt-0.5 mb-2">{place.address}</p>
+              <p className="text-xs text-surface-500 mt-0.5">{place.address}</p>
+              
+              {/* Category & Duration row */}
+              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                {/* Category selector */}
+                <select
+                  value={place.category}
+                  onChange={handleCategoryChange}
+                  className="text-xs font-medium bg-surface-50 border border-surface-200 text-surface-600 rounded-md px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary-500 appearance-none cursor-pointer"
+                  title="Change category"
+                >
+                  {ALL_CATEGORIES.map(cat => (
+                    <option key={cat} value={cat}>{getCategoryEmoji(cat)} {getCategoryLabel(cat)}</option>
+                  ))}
+                </select>
+
+                {/* Duration badge (click to edit) */}
+                {isEditingDuration ? (
+                  <div className="flex items-center gap-1">
+                    <Clock className="w-3 h-3 text-surface-400" />
+                    <input
+                      ref={durationRef}
+                      type="number"
+                      min="5"
+                      max="480"
+                      value={durationVal}
+                      onChange={(e) => setDurationVal(e.target.value)}
+                      onBlur={handleDurationSave}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleDurationSave();
+                        if (e.key === 'Escape') { setIsEditingDuration(false); setDurationVal(place.estimatedDuration.toString()); }
+                      }}
+                      className="w-14 text-xs font-medium bg-white border border-primary-300 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary-500 text-center"
+                    />
+                    <span className="text-xs text-surface-500">min</span>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setIsEditingDuration(true)}
+                    className="flex items-center gap-1 text-xs font-medium text-surface-500 hover:text-surface-700 bg-surface-50 border border-surface-200 rounded-md px-1.5 py-0.5 hover:border-surface-300 transition-colors"
+                    title="Click to edit duration"
+                  >
+                    <Clock className="w-3 h-3" />
+                    {place.estimatedDuration} min
+                  </button>
+                )}
+              </div>
             </div>
 
-            <button
-              onClick={() => removePlace(place.id)}
-              className="opacity-0 group-hover:opacity-100 p-2 text-red-500 hover:bg-red-50 rounded-lg transition-all"
-              aria-label="Remove place"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-1.5 shrink-0">
+              {/* Day assignment dropdown */}
+              <div className="relative">
+                <select
+                  value={place.dayIndex !== null ? place.dayIndex : ''}
+                  onChange={handleDayChange}
+                  className={`text-xs font-semibold border rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500 appearance-none cursor-pointer pr-5 ${getBadgeColor(place.dayIndex)}`}
+                  title="Assign to day"
+                >
+                  <option value="">Unassigned</option>
+                  {Array.from({ length: days }).map((_, i) => (
+                    <option key={i} value={i}>Day {i + 1}</option>
+                  ))}
+                </select>
+                {place.pinnedToDay && (
+                  <Pin className="absolute right-1 top-1/2 -translate-y-1/2 w-3 h-3 text-current opacity-60 pointer-events-none" />
+                )}
+              </div>
+
+              <button
+                onClick={() => removePlace(place.id)}
+                className="opacity-0 group-hover:opacity-100 p-2 text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                aria-label="Remove place"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
           {/* Inline Editable Description */}

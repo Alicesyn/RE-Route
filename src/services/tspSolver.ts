@@ -1,67 +1,111 @@
 import { Place, Hotel, DayRoute, TravelMode, OptimizationResult } from '../types';
 import { getDistance, estimateTime } from '../utils/distance';
 
-// Group unassigned places to days simply by splitting them evenly for now, 
-// or by closest hotel if multiple hotels exist.
-function clusterPlaces(places: Place[], hotels: Hotel[], days: number): Place[] {
-  const unassigned = places.filter(p => p.dayIndex === null);
+const DEFAULT_DAILY_BUDGET_MIN = 720; // 12 hours
+
+// Time-budget-aware clustering
+// Distributes places across days so no single day exceeds the budget
+// Respects pinnedToDay: pinned places stay on their assigned day
+function clusterPlaces(
+  places: Place[], 
+  hotels: Hotel[], 
+  days: number, 
+  travelMode: TravelMode,
+  dailyBudgetMin: number = DEFAULT_DAILY_BUDGET_MIN
+): Place[] {
+  const pinned = places.filter(p => p.dayIndex !== null && p.pinnedToDay);
+  const unassigned = places.filter(p => p.dayIndex === null || (p.dayIndex !== null && !p.pinnedToDay));
+  
   if (unassigned.length === 0) return places;
   
-  // Very basic k-means or closest hotel assignment
-  const updated = [...places];
+  // Calculate already-committed time per day from pinned places
+  const dayTimeUsed: number[] = Array(days).fill(0);
+  for (const p of pinned) {
+    if (p.dayIndex !== null) {
+      dayTimeUsed[p.dayIndex] += p.estimatedDuration;
+    }
+  }
   
-  unassigned.forEach(place => {
-    let closestDay = 0;
-    let minDistance = Infinity;
+  // Add estimated travel time for pinned places (rough: avg travel between pinned stops + to/from hotel)
+  for (let d = 0; d < days; d++) {
+    const dayPinned = pinned.filter(p => p.dayIndex === d);
+    const hotel = hotels.find(h => h.dayIndex === d);
+    if (dayPinned.length > 0 && hotel) {
+      // Rough: add avg travel from hotel to first place and back
+      const avgDist = dayPinned.reduce((sum, p) => sum + getDistance(hotel.lat, hotel.lng, p.lat, p.lng), 0) / dayPinned.length;
+      dayTimeUsed[d] += (estimateTime(avgDist * 2, travelMode)) / 60; // convert seconds to minutes
+    }
+  }
+  
+  // Reset non-pinned places
+  const toAssign = unassigned.map(p => ({ ...p, dayIndex: null as number | null, orderInDay: null as number | null }));
+  
+  // Sort by longest duration first (greedy: schedule big items first for better packing)
+  toAssign.sort((a, b) => b.estimatedDuration - a.estimatedDuration);
+  
+  // Greedy assignment: put each place on the day with the most remaining budget
+  for (const place of toAssign) {
+    let bestDay = 0;
+    let maxRemaining = -Infinity;
     
-    for (let i = 0; i < days; i++) {
-      const hotel = hotels.find(h => h.dayIndex === i);
+    for (let d = 0; d < days; d++) {
+      // Estimate travel time to this place from the day's hotel
+      const hotel = hotels.find(h => h.dayIndex === d);
+      let travelMin = 0;
       if (hotel) {
-        const d = getDistance(place.lat, place.lng, hotel.lat, hotel.lng);
-        if (d < minDistance) {
-          minDistance = d;
-          closestDay = i;
-        }
-      } else {
-        // No hotel for this day — fall back to even cyclic distribution
-        closestDay = place.id.charCodeAt(place.id.length - 1) % days;
+        const dist = getDistance(place.lat, place.lng, hotel.lat, hotel.lng);
+        travelMin = estimateTime(dist, travelMode) / 60; // seconds to minutes
+      }
+      
+      const totalIfAdded = dayTimeUsed[d] + place.estimatedDuration + travelMin;
+      const remaining = dailyBudgetMin - totalIfAdded;
+      
+      if (remaining > maxRemaining) {
+        maxRemaining = remaining;
+        bestDay = d;
       }
     }
     
-    const placeIdx = updated.findIndex(p => p.id === place.id);
-    if (placeIdx !== -1) {
-      updated[placeIdx] = { ...updated[placeIdx], dayIndex: closestDay };
+    place.dayIndex = bestDay;
+    
+    // Update time used
+    const hotel = hotels.find(h => h.dayIndex === bestDay);
+    let travelMin = 0;
+    if (hotel) {
+      const dist = getDistance(place.lat, place.lng, hotel.lat, hotel.lng);
+      travelMin = estimateTime(dist, travelMode) / 60;
     }
-  });
+    dayTimeUsed[bestDay] += place.estimatedDuration + travelMin;
+  }
   
-  return updated;
+  return [...pinned, ...toAssign];
 }
 
 // 2-Opt Algorithm for a single day's route (Start -> Stops -> End)
 function optimizeDayRoute(startHotel: Hotel | null, endHotel: Hotel | null, dayPlaces: Place[]): Place[] {
   if (dayPlaces.length <= 1) return dayPlaces;
   
-  // The route is StartHotel -> P1 -> P2 ... -> Pn -> EndHotel
-  
-  // For simplicity of 2-opt, we treat the sequence of points
-  const points = [];
+  const points: (Hotel | Place)[] = [];
   if (startHotel) points.push(startHotel);
   points.push(...dayPlaces);
   if (endHotel) points.push(endHotel);
   
+  // Define the range of indices that are swappable (only the places, not hotels)
+  const swapStart = startHotel ? 1 : 0;
+  const swapEnd = endHotel ? points.length - 2 : points.length - 1;
+  
   let bestDistance = calculateTotalDistance(points);
   let improved = true;
   
-  // 2-Opt main loop
+  // 2-Opt main loop — only swap within the place indices, never touch hotel anchors
   while (improved) {
     improved = false;
-    for (let i = 1; i < points.length - 1; i++) {
-      for (let j = i + 1; j < points.length; j++) {
+    for (let i = swapStart; i <= swapEnd; i++) {
+      for (let j = i + 1; j <= swapEnd; j++) {
         const newPoints = swap2Opt(points, i, j);
         const newDistance = calculateTotalDistance(newPoints);
         
         if (newDistance < bestDistance) {
-          // Replace points with newPoints
           for(let k = 0; k < points.length; k++) {
              points[k] = newPoints[k];
           }
@@ -72,22 +116,20 @@ function optimizeDayRoute(startHotel: Hotel | null, endHotel: Hotel | null, dayP
     }
   }
   
-  // Extract places back from points
-  let startIndex = startHotel ? 1 : 0;
-  let endIndex = endHotel ? points.length - 1 : points.length;
-  const optimizedPlaces = points.slice(startIndex, endIndex) as Place[];
+  // Extract places back from points (hotels are at fixed positions)
+  const placeStart = startHotel ? 1 : 0;
+  const placeEnd = endHotel ? points.length - 1 : points.length;
+  const optimizedPlaces = points.slice(placeStart, placeEnd) as Place[];
   
-  // Assign orderInDay
   return optimizedPlaces.map((p, idx) => ({ ...p, orderInDay: idx }));
 }
 
 function swap2Opt(route: any[], i: number, k: number): any[] {
-  const newRoute = [
+  return [
     ...route.slice(0, i),
     ...route.slice(i, k + 1).reverse(),
     ...route.slice(k + 1)
   ];
-  return newRoute;
 }
 
 function calculateTotalDistance(points: {lat: number, lng: number}[]): number {
@@ -95,15 +137,64 @@ function calculateTotalDistance(points: {lat: number, lng: number}[]): number {
   for (let i = 0; i < points.length - 1; i++) {
     dist += getDistance(points[i].lat, points[i].lng, points[i+1].lat, points[i+1].lng);
   }
-  // DO NOT add return to start. This is a path, not a cycle.
   return dist;
 }
 
-export function solveTSP(places: Place[], hotels: Hotel[], days: number, travelMode: TravelMode): OptimizationResult {
+function buildDayRoute(dayPlaces: Place[], hotels: Hotel[], dayIndex: number, travelMode: TravelMode): DayRoute {
+  const endHotel = hotels.find(h => h.dayIndex === dayIndex) || null;
+  const startHotel = dayIndex > 0 ? (hotels.find(h => h.dayIndex === dayIndex - 1) || null) : endHotel;
+  
+  const optimizedPlaces = optimizeDayRoute(startHotel, endHotel, dayPlaces);
+  
+  let dayDist = 0;
+  
+  const points = [];
+  if (startHotel) points.push(startHotel);
+  points.push(...optimizedPlaces);
+  if (endHotel) points.push(endHotel);
+  
+  const segments: { distance: number, time: number }[] = [];
+  
+  for (let i = 0; i < points.length - 1; i++) {
+    const segDist = getDistance(points[i].lat, points[i].lng, points[i+1].lat, points[i+1].lng);
+    dayDist += segDist;
+    segments.push({
+      distance: segDist,
+      time: estimateTime(segDist, travelMode)
+    });
+  }
+  
+  const dayTravelTime = estimateTime(dayDist, travelMode);
+  const dayVisitTime = optimizedPlaces.reduce((sum, p) => sum + p.estimatedDuration * 60, 0); // minutes to seconds
+  
+  return {
+    day: dayIndex,
+    startHotel,
+    endHotel,
+    stops: optimizedPlaces,
+    segments,
+    totalDistance: dayDist,
+    totalTime: dayTravelTime,
+    totalVisitTime: dayVisitTime
+  };
+}
+
+// Optimize a single day's route
+export function solveSingleDay(dayPlaces: Place[], hotels: Hotel[], dayIndex: number, travelMode: TravelMode): DayRoute {
+  return buildDayRoute(dayPlaces, hotels, dayIndex, travelMode);
+}
+
+export function solveTSP(
+  places: Place[], 
+  hotels: Hotel[], 
+  days: number, 
+  travelMode: TravelMode,
+  dailyBudgetMin: number = DEFAULT_DAILY_BUDGET_MIN
+): OptimizationResult {
   const startTime = performance.now();
   
-  // 1. Cluster unassigned places
-  const clusteredPlaces = clusterPlaces(places, hotels, days);
+  // 1. Cluster unassigned places (time-budget-aware, respects pinnedToDay)
+  const clusteredPlaces = clusterPlaces(places, hotels, days, travelMode, dailyBudgetMin);
   
   let totalTripDistance = 0;
   let totalTripTime = 0;
@@ -112,46 +203,10 @@ export function solveTSP(places: Place[], hotels: Hotel[], days: number, travelM
   // 2. Optimize each day
   for (let d = 0; d < days; d++) {
     const dayPlaces = clusteredPlaces.filter(p => p.dayIndex === d);
-    
-    // Determine start and end hotels for this day
-    const endHotel = hotels.find(h => h.dayIndex === d) || null;
-    const startHotel = d > 0 ? (hotels.find(h => h.dayIndex === d - 1) || null) : endHotel;
-    
-    const optimizedPlaces = optimizeDayRoute(startHotel, endHotel, dayPlaces);
-    
-    // Calculate final metrics for the day
-    let dayDist = 0;
-    
-    const points = [];
-    if (startHotel) points.push(startHotel);
-    points.push(...optimizedPlaces);
-    if (endHotel) points.push(endHotel);
-    
-    const segments: { distance: number, time: number }[] = [];
-    
-    for (let i = 0; i < points.length - 1; i++) {
-      const segDist = getDistance(points[i].lat, points[i].lng, points[i+1].lat, points[i+1].lng);
-      dayDist += segDist;
-      segments.push({
-        distance: segDist,
-        time: estimateTime(segDist, travelMode)
-      });
-    }
-    
-    const dayTime = estimateTime(dayDist, travelMode);
-    
-    dayRoutes.push({
-      day: d,
-      startHotel,
-      endHotel,
-      stops: optimizedPlaces,
-      segments,
-      totalDistance: dayDist,
-      totalTime: dayTime
-    });
-    
-    totalTripDistance += dayDist;
-    totalTripTime += dayTime;
+    const route = buildDayRoute(dayPlaces, hotels, d, travelMode);
+    dayRoutes.push(route);
+    totalTripDistance += route.totalDistance;
+    totalTripTime += route.totalTime;
   }
   
   console.log(`Optimization took ${performance.now() - startTime}ms`);

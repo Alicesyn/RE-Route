@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useRouteStore } from '../../store/useRouteStore';
-import { Clock, Building2 } from 'lucide-react';
+import { Clock, Building2, Wand2, X, Timer } from 'lucide-react';
+import { getCategoryEmoji } from '../../utils/categoryUtils';
 
 const ExpandableDescription: React.FC<{ text: string }> = ({ text }) => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -19,7 +20,7 @@ const ExpandableDescription: React.FC<{ text: string }> = ({ text }) => {
 };
 
 export const DailySchedule: React.FC = () => {
-  const { optimizedRoutes } = useRouteStore();
+  const { optimizedRoutes, optimizeDay, unassignPlace, dailyBudget } = useRouteStore();
 
   if (optimizedRoutes.length === 0) return null;
 
@@ -33,96 +34,160 @@ export const DailySchedule: React.FC = () => {
       </div>
 
       <div className="p-6 flex gap-6 overflow-x-auto custom-scrollbar bg-surface-100 print:flex-col print:overflow-visible print:bg-white print:p-0">
-        {optimizedRoutes.map((route, i) => (
-          <div key={i} className="schedule-day-card">
-            <div className="p-3 border-b border-surface-100 bg-surface-50 flex items-center justify-between shrink-0">
-              <h3 className="font-bold text-primary-700">Day {route.day + 1}</h3>
-              <div className="flex items-center gap-1 text-xs font-semibold text-surface-500 bg-surface-100 px-2 py-1 rounded-md">
-                <Clock className="w-3 h-3" />
-                {Math.round(route.totalTime / 60)} min travel
+        {optimizedRoutes.map((route, i) => {
+          const travelMin = Math.round((route.totalTime || 0) / 60);
+          const visitMin = Math.round((route.totalVisitTime || 0) / 60);
+          const totalDayMin = travelMin + visitMin;
+          const budgetPct = Math.min(100, Math.round((totalDayMin / dailyBudget) * 100));
+          const isOverBudget = totalDayMin > dailyBudget;
+          
+          return (
+            <div key={i} className="schedule-day-card">
+              <div className="p-3 border-b border-surface-100 bg-surface-50 shrink-0">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-bold text-primary-700">Day {route.day + 1}</h3>
+                  <div className="flex items-center gap-2">
+                    {route.stops.length > 1 && (
+                      <button
+                        onClick={() => optimizeDay(route.day)}
+                        className="flex items-center gap-1 text-xs font-semibold text-primary-600 hover:text-primary-700 bg-primary-50 hover:bg-primary-100 px-2 py-1 rounded-md transition-all"
+                        title={`Optimize Day ${route.day + 1} only`}
+                      >
+                        <Wand2 className="w-3 h-3" />
+                        Optimize
+                      </button>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Time breakdown */}
+                <div className="flex items-center gap-3 text-[11px] font-semibold text-surface-500 mb-2">
+                  <span className="flex items-center gap-1">
+                    <Timer className="w-3 h-3" />
+                    {visitMin > 60 ? `${Math.floor(visitMin / 60)}h ${visitMin % 60}m` : `${visitMin}m`} visit
+                  </span>
+                  <span className="text-surface-300">+</span>
+                  <span className="flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    {travelMin}m travel
+                  </span>
+                </div>
+                
+                {/* Budget progress bar */}
+                {route.stops.length > 0 && (
+                  <div className="w-full bg-surface-200 rounded-full h-1.5 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${
+                        isOverBudget 
+                          ? 'bg-red-400' 
+                          : budgetPct > 80 
+                            ? 'bg-amber-400' 
+                            : 'bg-emerald-400'
+                      }`}
+                      style={{ width: `${budgetPct}%` }}
+                    />
+                  </div>
+                )}
               </div>
-            </div>
 
-            <div className="p-4 flex-1">
-              <div className="relative">
-                {/* Vertical line connecting nodes */}
-                <div className="itinerary-node-line"></div>
+              <div className="p-4 flex-1">
+                <div className="relative">
+                  {/* Vertical line connecting nodes */}
+                  <div className="itinerary-node-line"></div>
 
-                <div className="space-y-0">
-                  {/* Start Hotel */}
-                  {route.startHotel && (
-                    <div className="relative z-10">
-                      <div className="flex items-start gap-3 bg-white">
-                        <div className="schedule-node-icon bg-primary-100 text-primary-600">
-                          <Building2 className="w-4 h-4" />
-                        </div>
-                        <div className="flex-1 pb-1">
-                          <p className="text-sm font-semibold text-surface-900">{route.startHotel.name}</p>
-                          <p className="text-xs text-surface-500">Start of day</p>
-                        </div>
-                      </div>
-                      {/* Segment after Start Hotel */}
-                      {route.segments && route.segments[0] && (
-                        <div className="pt-0 pb-3 pl-12 relative">
-                          <div className="travel-pill">
-                            <Clock className="w-3.5 h-3.5 text-surface-400" />
-                            {Math.round(route.segments[0].time / 60)} min
-                            <span className="text-surface-300 mx-0.5">•</span>
-                            {(route.segments[0].distance / 1000).toFixed(1)} km
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Stops */}
-                  {route.stops.map((stop, stopIdx) => {
-                    const segmentIdx = route.startHotel ? stopIdx + 1 : stopIdx;
-                    return (
-                      <div key={stopIdx} className="relative z-10">
+                  <div className="space-y-0">
+                    {/* Start Hotel */}
+                    {route.startHotel && (
+                      <div className="relative z-10">
                         <div className="flex items-start gap-3 bg-white">
-                          <div className="schedule-node-icon bg-surface-900 text-white text-xs font-bold">
-                            {stopIdx + 1}
+                          <div className="schedule-node-icon bg-primary-100 text-primary-600">
+                            <Building2 className="w-4 h-4" />
                           </div>
                           <div className="flex-1 pb-1">
-                            <p className="text-sm font-semibold text-surface-900">{stop.name}</p>
-                            {stop.description && <ExpandableDescription text={stop.description} />}
+                            <p className="text-sm font-semibold text-surface-900">{route.startHotel.name}</p>
+                            <p className="text-xs text-surface-500">Start of day</p>
                           </div>
                         </div>
-                        {/* Segment after this stop */}
-                        {route.segments && route.segments[segmentIdx] && (
+                        {/* Segment after Start Hotel */}
+                        {route.segments && route.segments[0] && (
                           <div className="pt-0 pb-3 pl-12 relative">
                             <div className="travel-pill">
                               <Clock className="w-3.5 h-3.5 text-surface-400" />
-                              {Math.round(route.segments[segmentIdx].time / 60)} min
+                              {Math.round(route.segments[0].time / 60)} min
                               <span className="text-surface-300 mx-0.5">•</span>
-                              {(route.segments[segmentIdx].distance / 1000).toFixed(1)} km
+                              {(route.segments[0].distance / 1000).toFixed(1)} km
                             </div>
                           </div>
                         )}
                       </div>
-                    );
-                  })}
+                    )}
 
-                  {/* End Hotel */}
-                  {route.endHotel && (
-                    <div className="relative z-10">
-                      <div className="flex items-start gap-3 bg-white">
-                        <div className="schedule-node-icon bg-primary-100 text-primary-600">
-                          <Building2 className="w-4 h-4" />
+                    {/* Stops */}
+                    {route.stops.map((stop, stopIdx) => {
+                      const segmentIdx = route.startHotel ? stopIdx + 1 : stopIdx;
+                      return (
+                        <div key={stopIdx} className="relative z-10 group/stop">
+                          <div className="flex items-start gap-3 bg-white">
+                            <div className="schedule-node-icon bg-surface-900 text-white text-xs font-bold">
+                              {stopIdx + 1}
+                            </div>
+                            <div className="flex-1 pb-1">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-semibold text-surface-900 flex items-center gap-1.5">
+                                    <span>{getCategoryEmoji(stop.category || 'other')}</span>
+                                    <span className="truncate">{stop.name}</span>
+                                  </p>
+                                  <p className="text-[11px] text-surface-400 font-medium mt-0.5">
+                                    ⏱ {stop.estimatedDuration || 60} min visit
+                                  </p>
+                                </div>
+                                <button
+                                  onClick={() => unassignPlace(stop.id)}
+                                  className="opacity-0 group-hover/stop:opacity-100 p-1 text-surface-400 hover:text-red-500 hover:bg-red-50 rounded transition-all shrink-0"
+                                  title="Remove from this day"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                              {stop.description && <ExpandableDescription text={stop.description} />}
+                            </div>
+                          </div>
+                          {/* Segment after this stop */}
+                          {route.segments && route.segments[segmentIdx] && (
+                            <div className="pt-0 pb-3 pl-12 relative">
+                              <div className="travel-pill">
+                                <Clock className="w-3.5 h-3.5 text-surface-400" />
+                                {Math.round(route.segments[segmentIdx].time / 60)} min
+                                <span className="text-surface-300 mx-0.5">•</span>
+                                {(route.segments[segmentIdx].distance / 1000).toFixed(1)} km
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-semibold text-surface-900">{route.endHotel.name}</p>
-                          <p className="text-xs text-surface-500">End of day</p>
+                      );
+                    })}
+
+                    {/* End Hotel */}
+                    {route.endHotel && (
+                      <div className="relative z-10">
+                        <div className="flex items-start gap-3 bg-white">
+                          <div className="schedule-node-icon bg-primary-100 text-primary-600">
+                            <Building2 className="w-4 h-4" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold text-surface-900">{route.endHotel.name}</p>
+                            <p className="text-xs text-surface-500">End of day</p>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

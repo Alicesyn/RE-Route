@@ -1,3 +1,8 @@
+export type PlaceCategory = 
+  | 'museum' | 'restaurant' | 'coffee_shop' | 'park' 
+  | 'landmark' | 'shopping' | 'entertainment' 
+  | 'beach' | 'religious_site' | 'nightlife' | 'other';
+
 export interface Place {
   id: string;
   name: string;
@@ -6,8 +11,11 @@ export interface Place {
   lng: number;
   description: string;
   descriptionSource: 'user' | 'ai' | 'mock';
+  category: PlaceCategory;
+  estimatedDuration: number; // minutes
   dayIndex: number | null; // 0-indexed day
   orderInDay: number | null;
+  pinnedToDay: boolean; // true if user manually assigned to a day; optimizer won't move pinned places
   notes?: string;
 }
 
@@ -33,7 +41,8 @@ export interface DayRoute {
   stops: Place[];
   segments: RouteSegment[];
   totalDistance: number; // in meters
-  totalTime: number; // in seconds
+  totalTime: number; // in seconds (travel only)
+  totalVisitTime: number; // in seconds (visit durations)
 }
 
 export interface OptimizationResult {
