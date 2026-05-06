@@ -13,7 +13,7 @@ RE:Route is a modern travel planning application designed to help travelers buil
 - **🤖 AI Descriptions**: Generate beautiful descriptions for your destinations with a single click.
 - **💾 Save & Load**: Snapshot your trips and switch between multiple itineraries easily.
 - **📄 Pro Export**: Export your finalized itinerary to a print-ready PDF or a text list of places.
-- **🌗 Mode Switching**: 
+- **🌗 Mode Switching**:
   - **Mock Mode**: Explore features with pre-set data (no API keys required).
   - **Real Mode**: Connect to the Google Places API for live location search.
 
@@ -37,23 +37,27 @@ RE:Route is a modern travel planning application designed to help travelers buil
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/Alicesyn/RE-Route.git
    cd RE-Route
    ```
 
 2. **Install dependencies**
+
    ```bash
    npm install
    ```
 
 3. **Set up Environment Variables (Optional)**
    If you want to use "Real Mode" with live Google Places data, create a `.env` file in the root:
+
    ```env
    VITE_GOOGLE_MAPS_API_KEY=your_api_key_here
    ```
 
 4. **Start the development server**
+
    ```bash
    npm run dev
    ```

@@ -1,8 +1,10 @@
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
 // Persistent cache for search queries
-const CACHE_KEY = 'reroute_search_cache';
-const searchCache: Record<string, any[]> = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
+const CACHE_KEY = "reroute_search_cache";
+const searchCache: Record<string, any[]> = JSON.parse(
+  localStorage.getItem(CACHE_KEY) || "{}",
+);
 
 const saveToCache = (query: string, results: any[]) => {
   searchCache[query] = results;
@@ -10,7 +12,7 @@ const saveToCache = (query: string, results: any[]) => {
     localStorage.setItem(CACHE_KEY, JSON.stringify(searchCache));
   } catch (e) {
     // If local storage is full, we just don't persist this one
-    console.warn('Search cache persistence failed:', e);
+    console.warn("Search cache persistence failed:", e);
   }
 };
 
@@ -28,7 +30,7 @@ export const searchPlaces = async (query: string): Promise<MapsPlace[]> => {
   if (searchCache[query]) return searchCache[query];
 
   if (!API_KEY) {
-    throw new Error('Google Maps API Key is missing');
+    throw new Error("Google Maps API Key is missing");
   }
 
   try {
@@ -38,18 +40,19 @@ export const searchPlaces = async (query: string): Promise<MapsPlace[]> => {
     const response = await fetch(
       `https://places.googleapis.com/v1/places:searchText`,
       {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'X-Goog-Api-Key': API_KEY,
-          'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.types'
+          "Content-Type": "application/json",
+          "X-Goog-Api-Key": API_KEY,
+          "X-Goog-FieldMask":
+            "places.id,places.displayName,places.formattedAddress,places.location,places.types",
         },
-        body: JSON.stringify({ textQuery: query })
-      }
+        body: JSON.stringify({ textQuery: query }),
+      },
     );
 
     if (!response.ok) {
-      throw new Error('Failed to fetch places from Google');
+      throw new Error("Failed to fetch places from Google");
     }
 
     const data = await response.json();
@@ -59,13 +62,13 @@ export const searchPlaces = async (query: string): Promise<MapsPlace[]> => {
       address: p.formattedAddress,
       lat: p.location.latitude,
       lng: p.location.longitude,
-      types: p.types || []
+      types: p.types || [],
     }));
 
     saveToCache(query, results);
     return results;
   } catch (error) {
-    console.error('Maps Search Error:', error);
+    console.error("Maps Search Error:", error);
     throw error;
   }
 };

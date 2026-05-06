@@ -1,15 +1,27 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Search, Plus, CalendarDays, Loader2, AlertCircle, FileText } from 'lucide-react';
-import { useRouteStore } from '../../store/useRouteStore';
-import { MOCK_PLACES } from '../../services/mockData';
-import { searchPlaces, MapsPlace } from '../../services/mapsService';
-import { motion, AnimatePresence } from 'framer-motion';
-import { getCategoryEmoji, getCategoryLabel, autoCategorize, getDefaultDuration } from '../../utils/categoryUtils';
-import { ImportModal } from './ImportModal';
-import { MissingPlacesList } from './MissingPlacesList';
+import React, { useState, useEffect, useRef } from "react";
+import {
+  Search,
+  Plus,
+  CalendarDays,
+  Loader2,
+  AlertCircle,
+  FileText,
+} from "lucide-react";
+import { useRouteStore } from "../../store/useRouteStore";
+import { MOCK_PLACES } from "../../services/mockData";
+import { searchPlaces, MapsPlace } from "../../services/mapsService";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  getCategoryEmoji,
+  getCategoryLabel,
+  autoCategorize,
+  getDefaultDuration,
+} from "../../utils/categoryUtils";
+import { ImportModal } from "./ImportModal";
+import { MissingPlacesList } from "./MissingPlacesList";
 
 export const PlaceSearch: React.FC = () => {
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [results, setResults] = useState<any[]>([]);
@@ -21,9 +33,13 @@ export const PlaceSearch: React.FC = () => {
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (appMode !== 'real') {
+    if (appMode !== "real") {
       if (query.length > 0) {
-        setResults(MOCK_PLACES.filter(p => p.name.toLowerCase().includes(query.toLowerCase())));
+        setResults(
+          MOCK_PLACES.filter((p) =>
+            p.name.toLowerCase().includes(query.toLowerCase()),
+          ),
+        );
         setIsOpen(true);
       } else {
         setResults([]);
@@ -50,7 +66,7 @@ export const PlaceSearch: React.FC = () => {
         setResults(mapsResults);
         setIsOpen(true);
       } catch (err) {
-        setError('Failed to search locations. Check your API key.');
+        setError("Failed to search locations. Check your API key.");
         setResults([]);
       } finally {
         setIsLoading(false);
@@ -68,21 +84,23 @@ export const PlaceSearch: React.FC = () => {
 
   const handleAdd = (place: any) => {
     // For real places, we initialize them with limited data; Gemini will fill the rest
-    const category = place.category || autoCategorize(place.name, place.description || '');
-    const estimatedDuration = place.estimatedDuration || getDefaultDuration(category);
-    
+    const category =
+      place.category || autoCategorize(place.name, place.description || "");
+    const estimatedDuration =
+      place.estimatedDuration || getDefaultDuration(category);
+
     addPlace(
       {
         ...place,
         id: `p_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         category,
         estimatedDuration,
-        description: place.description || '',
-        descriptionSource: appMode === 'real' ? 'user' : 'mock'
+        description: place.description || "",
+        descriptionSource: appMode === "real" ? "user" : "mock",
       },
-      selectedDay !== null ? selectedDay : undefined
+      selectedDay !== null ? selectedDay : undefined,
     );
-    setQuery('');
+    setQuery("");
     setIsOpen(false);
   };
 
@@ -90,20 +108,27 @@ export const PlaceSearch: React.FC = () => {
     <div className="flex items-center gap-1.5 shrink-0">
       <CalendarDays className="w-3.5 h-3.5 text-surface-400 dark:text-surface-500" />
       <select
-        value={selectedDay !== null ? selectedDay : ''}
-        onChange={(e) => setSelectedDay(e.target.value === '' ? null : parseInt(e.target.value))}
+        value={selectedDay !== null ? selectedDay : ""}
+        onChange={(e) =>
+          setSelectedDay(
+            e.target.value === "" ? null : parseInt(e.target.value),
+          )
+        }
         className="text-xs font-medium bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 text-surface-700 dark:text-surface-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary-500 appearance-none cursor-pointer"
         title="Assign to day"
       >
-        <option value="">{isSidebarExpanded ? 'Unassigned' : '-'}</option>
+        <option value="">{isSidebarExpanded ? "Unassigned" : "-"}</option>
         {Array.from({ length: days }).map((_, i) => (
-          <option key={i} value={i}>{isSidebarExpanded ? 'Day' : 'D'}{i + 1}</option>
+          <option key={i} value={i}>
+            {isSidebarExpanded ? "Day" : "D"}
+            {i + 1}
+          </option>
         ))}
       </select>
     </div>
   );
 
-  if (appMode === 'dropdown-mock') {
+  if (appMode === "dropdown-mock") {
     return (
       <div className="relative mb-6">
         <div className="flex gap-2">
@@ -112,14 +137,19 @@ export const PlaceSearch: React.FC = () => {
               onChange={(e) => {
                 const place = MOCK_PLACES[parseInt(e.target.value)];
                 if (place) handleAdd(place);
-                e.target.value = '';
+                e.target.value = "";
               }}
               className="w-full bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 text-surface-900 dark:text-white rounded-xl py-3 pl-4 pr-10 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent appearance-none shadow-sm font-medium"
               defaultValue=""
             >
-              <option value="" disabled>Select a place to add...</option>
+              <option value="" disabled>
+                Select a place to add...
+              </option>
               {MOCK_PLACES.map((p, i) => (
-                <option key={i} value={i}>{getCategoryEmoji(p.category)} {p.name} ({p.estimatedDuration} min)</option>
+                <option key={i} value={i}>
+                  {getCategoryEmoji(p.category)} {p.name} ({p.estimatedDuration}{" "}
+                  min)
+                </option>
               ))}
             </select>
             <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
@@ -147,13 +177,17 @@ export const PlaceSearch: React.FC = () => {
             type="text"
             value={query}
             onChange={handleSearch}
-            placeholder={appMode === 'real' ? "Search real places with Google..." : "Search for a place to add..."}
+            placeholder={
+              appMode === "real"
+                ? "Search real places with Google..."
+                : "Search for a place to add..."
+            }
             className="input-base rounded-xl py-3 pl-12 pr-4"
           />
         </div>
         <div className="flex flex-col gap-1">
           {daySelector}
-          <button 
+          <button
             onClick={() => setIsImportOpen(true)}
             className="flex items-center justify-center gap-1.5 px-2 py-1 text-[10px] font-bold text-surface-500 hover:text-primary-600 dark:text-surface-400 dark:hover:text-primary-400 border border-surface-200 dark:border-surface-700 rounded-lg hover:border-primary-500/50 transition-all"
           >
@@ -163,7 +197,10 @@ export const PlaceSearch: React.FC = () => {
         </div>
       </div>
 
-      <ImportModal isOpen={isImportOpen} onClose={() => setIsImportOpen(false)} />
+      <ImportModal
+        isOpen={isImportOpen}
+        onClose={() => setIsImportOpen(false)}
+      />
       <MissingPlacesList />
 
       {error && (
@@ -188,11 +225,16 @@ export const PlaceSearch: React.FC = () => {
                 className="w-full text-left px-4 py-3 hover:bg-surface-50 dark:hover:bg-surface-700 flex items-center justify-between group transition-colors border-b border-surface-50 dark:border-surface-700 last:border-0"
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-lg" title={getCategoryLabel(place.category || 'other')}>
-                    {getCategoryEmoji(place.category || 'other')}
+                  <span
+                    className="text-lg"
+                    title={getCategoryLabel(place.category || "other")}
+                  >
+                    {getCategoryEmoji(place.category || "other")}
                   </span>
                   <div className="min-w-0">
-                    <h4 className="font-medium text-surface-900 dark:text-white truncate">{place.name}</h4>
+                    <h4 className="font-medium text-surface-900 dark:text-white truncate">
+                      {place.name}
+                    </h4>
                     <p className="text-[11px] text-surface-500 dark:text-surface-400 truncate">
                       {place.address}
                     </p>

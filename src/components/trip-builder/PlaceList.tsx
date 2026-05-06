@@ -1,33 +1,33 @@
-import React, { useState } from 'react';
-import { Search } from 'lucide-react';
-import { 
-  DndContext, 
+import React, { useState } from "react";
+import { Search } from "lucide-react";
+import {
+  DndContext,
   closestCenter,
   KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
-  DragEndEvent
-} from '@dnd-kit/core';
+  DragEndEvent,
+} from "@dnd-kit/core";
 import {
   arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   rectSortingStrategy,
-} from '@dnd-kit/sortable';
-import { PlaceItem } from './PlaceItem';
-import { useRouteStore } from '../../store/useRouteStore';
+} from "@dnd-kit/sortable";
+import { PlaceItem } from "./PlaceItem";
+import { useRouteStore } from "../../store/useRouteStore";
 
 interface PlaceListProps {
   isExpanded: boolean;
 }
 
-type FilterTab = 'all' | 'unassigned';
+type FilterTab = "all" | "unassigned";
 
 export const PlaceList: React.FC<PlaceListProps> = ({ isExpanded }) => {
   const { places, reorderPlaces } = useRouteStore();
-  const [activeTab, setActiveTab] = useState<FilterTab>('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState<FilterTab>("all");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -37,7 +37,7 @@ export const PlaceList: React.FC<PlaceListProps> = ({ isExpanded }) => {
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    })
+    }),
   );
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -50,20 +50,25 @@ export const PlaceList: React.FC<PlaceListProps> = ({ isExpanded }) => {
     }
   };
 
-  const unassignedCount = places.filter(p => p.dayIndex === null).length;
+  const unassignedCount = places.filter((p) => p.dayIndex === null).length;
 
-  let filteredPlaces = activeTab === 'unassigned'
-    ? places.filter(p => p.dayIndex === null)
-    : places;
+  let filteredPlaces =
+    activeTab === "unassigned"
+      ? places.filter((p) => p.dayIndex === null)
+      : places;
 
   if (searchQuery.trim()) {
-    filteredPlaces = filteredPlaces.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
+    filteredPlaces = filteredPlaces.filter((p) =>
+      p.name.toLowerCase().includes(searchQuery.toLowerCase()),
+    );
   }
 
   if (places.length === 0) {
     return (
       <div className="text-center py-12 px-4 bg-white dark:bg-surface-800 border border-dashed border-surface-300 dark:border-surface-600 rounded-xl">
-        <p className="text-surface-500 dark:text-surface-400">No places added yet. Search above to add places to your itinerary!</p>
+        <p className="text-surface-500 dark:text-surface-400">
+          No places added yet. Search above to add places to your itinerary!
+        </p>
       </div>
     );
   }
@@ -73,30 +78,32 @@ export const PlaceList: React.FC<PlaceListProps> = ({ isExpanded }) => {
       {/* Filter Tabs */}
       <div className="flex gap-1 mb-3 bg-surface-100 dark:bg-surface-900/50 p-1 rounded-lg">
         <button
-          onClick={() => setActiveTab('all')}
+          onClick={() => setActiveTab("all")}
           className={`flex-1 text-xs font-semibold py-1.5 px-3 rounded-md transition-all ${
-            activeTab === 'all'
-              ? 'bg-white dark:bg-surface-700 text-surface-900 dark:text-white shadow-sm'
-              : 'text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-200'
+            activeTab === "all"
+              ? "bg-white dark:bg-surface-700 text-surface-900 dark:text-white shadow-sm"
+              : "text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-200"
           }`}
         >
           All <span className="ml-1 opacity-60">({places.length})</span>
         </button>
         <button
-          onClick={() => setActiveTab('unassigned')}
+          onClick={() => setActiveTab("unassigned")}
           className={`flex-1 text-xs font-semibold py-1.5 px-3 rounded-md transition-all ${
-            activeTab === 'unassigned'
-              ? 'bg-white dark:bg-surface-700 text-surface-900 dark:text-white shadow-sm'
-              : 'text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-200'
+            activeTab === "unassigned"
+              ? "bg-white dark:bg-surface-700 text-surface-900 dark:text-white shadow-sm"
+              : "text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-200"
           }`}
         >
           Unassigned
           {unassignedCount > 0 && (
-            <span className={`ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] text-[10px] font-bold rounded-full px-1 ${
-              activeTab === 'unassigned'
-                ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
-                : 'bg-surface-200 dark:bg-surface-700 text-surface-600 dark:text-surface-300'
-            }`}>
+            <span
+              className={`ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] text-[10px] font-bold rounded-full px-1 ${
+                activeTab === "unassigned"
+                  ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
+                  : "bg-surface-200 dark:bg-surface-700 text-surface-600 dark:text-surface-300"
+              }`}
+            >
               {unassignedCount}
             </span>
           )}
@@ -118,23 +125,24 @@ export const PlaceList: React.FC<PlaceListProps> = ({ isExpanded }) => {
       {filteredPlaces.length === 0 ? (
         <div className="text-center py-8 px-4 bg-white dark:bg-surface-800 border border-dashed border-surface-300 dark:border-surface-600 rounded-xl">
           <p className="text-surface-500 dark:text-surface-400 text-sm">
-            {activeTab === 'unassigned'
-              ? 'All places are assigned to a day!'
-              : 'No places match this filter.'
-            }
+            {activeTab === "unassigned"
+              ? "All places are assigned to a day!"
+              : "No places match this filter."}
           </p>
         </div>
       ) : (
-        <DndContext 
+        <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
           onDragEnd={handleDragEnd}
         >
-          <SortableContext 
-            items={filteredPlaces.map(p => p.id)}
+          <SortableContext
+            items={filteredPlaces.map((p) => p.id)}
             strategy={rectSortingStrategy}
           >
-            <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 transition-all duration-300 ${isExpanded ? '' : 'max-h-[360px] overflow-y-auto pr-2 custom-scrollbar'} print:max-h-none print:overflow-visible print:grid-cols-1`}>
+            <div
+              className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 transition-all duration-300 ${isExpanded ? "" : "max-h-[360px] overflow-y-auto pr-2 custom-scrollbar"} print:max-h-none print:overflow-visible print:grid-cols-1`}
+            >
               {filteredPlaces.map((place) => (
                 <div key={place.id} className="h-full">
                   <PlaceItem place={place} />

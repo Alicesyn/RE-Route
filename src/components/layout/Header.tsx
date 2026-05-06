@@ -1,12 +1,23 @@
-import React, { useState } from 'react';
-import { useRouteStore } from '../../store/useRouteStore';
-import { Map, Download, Save, Moon, Sun, Upload, FolderOpen, Check, FileText } from 'lucide-react';
+import React, { useState } from "react";
+import { useRouteStore } from "../../store/useRouteStore";
+import {
+  Map,
+  Download,
+  Save,
+  Moon,
+  Sun,
+  Upload,
+  FolderOpen,
+  Check,
+  FileText,
+} from "lucide-react";
 
-import { ImportModal } from './ImportModal';
-import { LoadTripModal } from './LoadTripModal';
+import { ImportModal } from "./ImportModal";
+import { LoadTripModal } from "./LoadTripModal";
 
 export const Header: React.FC = () => {
-  const { appMode, setAppMode, title, saveTrip, places, theme, setTheme } = useRouteStore();
+  const { appMode, setAppMode, title, saveTrip, places, theme, setTheme } =
+    useRouteStore();
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isLoadOpen, setIsLoadOpen] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
@@ -18,12 +29,16 @@ export const Header: React.FC = () => {
   };
 
   const handleExportTxt = () => {
-    const textContent = places.map((p, i) => `${i + 1}. ${p.name}\n   ${p.address}`).join('\n\n');
-    const blob = new Blob([`Places to Visit - ${title}\n\n${textContent}`], { type: 'text/plain' });
+    const textContent = places
+      .map((p, i) => `${i + 1}. ${p.name}\n   ${p.address}`)
+      .join("\n\n");
+    const blob = new Blob([`Places to Visit - ${title}\n\n${textContent}`], {
+      type: "text/plain",
+    });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = `Wanderlog_Places_${title.replace(/\s+/g, '_')}.txt`;
+    a.download = `Wanderlog_Places_${title.replace(/\s+/g, "_")}.txt`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -34,18 +49,22 @@ export const Header: React.FC = () => {
         <div className="bg-primary-500 p-2 rounded-lg">
           <Map className="text-white w-6 h-6" />
         </div>
-        <h1 className="text-2xl font-bold text-surface-900 dark:text-white tracking-tight">{title}</h1>
+        <h1 className="text-2xl font-bold text-surface-900 dark:text-white tracking-tight">
+          {title}
+        </h1>
       </div>
-      
+
       <div className="flex items-center gap-4">
         <div className="relative">
-          <select 
+          <select
             value={appMode}
-            onChange={(e) => setAppMode(e.target.value as 'real' | 'mock' | 'dropdown-mock')}
+            onChange={(e) =>
+              setAppMode(e.target.value as "real" | "mock" | "dropdown-mock")
+            }
             className={`appearance-none flex items-center gap-2 pl-4 pr-10 py-2 rounded-full text-sm font-medium transition-colors border cursor-pointer outline-none focus:ring-2 focus:ring-primary-500 ${
-              appMode === 'real' 
-                ? 'bg-white dark:bg-surface-800 text-surface-700 dark:text-surface-200 border-surface-200 dark:border-surface-600' 
-                : 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-400 border-amber-200 dark:border-amber-800/50'
+              appMode === "real"
+                ? "bg-white dark:bg-surface-800 text-surface-700 dark:text-surface-200 border-surface-200 dark:border-surface-600"
+                : "bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-400 border-amber-200 dark:border-amber-800/50"
             }`}
           >
             <option value="real">Real Mode</option>
@@ -53,16 +72,20 @@ export const Header: React.FC = () => {
             <option value="dropdown-mock">Dropdown Mock Mode</option>
           </select>
           <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-            {appMode === 'real' ? <Moon className="w-4 h-4 text-surface-400 dark:text-surface-500" /> : <Sun className="w-4 h-4 text-amber-600 dark:text-amber-500" />}
+            {appMode === "real" ? (
+              <Moon className="w-4 h-4 text-surface-400 dark:text-surface-500" />
+            ) : (
+              <Sun className="w-4 h-4 text-amber-600 dark:text-amber-500" />
+            )}
           </div>
         </div>
 
         {/* Theme Toggle */}
-        <button 
-          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+        <button
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
           className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors border outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-surface-800 text-surface-700 dark:text-surface-200 border-surface-200 dark:border-surface-600 hover:bg-surface-50 dark:hover:bg-surface-700"
         >
-          {theme === 'dark' ? (
+          {theme === "dark" ? (
             <>
               <Moon className="w-4 h-4 text-surface-400 dark:text-surface-500" />
               <span>Dark Mode</span>
@@ -74,42 +97,48 @@ export const Header: React.FC = () => {
             </>
           )}
         </button>
-        
-        <button 
+
+        <button
           onClick={handleSave}
           className={`flex items-center gap-2 font-medium text-sm transition-colors ${
-            isSaved ? 'text-green-600 dark:text-green-500' : 'text-surface-600 dark:text-surface-300 hover:text-primary-600 dark:hover:text-primary-400'
+            isSaved
+              ? "text-green-600 dark:text-green-500"
+              : "text-surface-600 dark:text-surface-300 hover:text-primary-600 dark:hover:text-primary-400"
           }`}
         >
-          {isSaved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-          {isSaved ? 'Saved!' : 'Save'}
+          {isSaved ? (
+            <Check className="w-4 h-4" />
+          ) : (
+            <Save className="w-4 h-4" />
+          )}
+          {isSaved ? "Saved!" : "Save"}
         </button>
 
-        <button 
+        <button
           onClick={() => setIsLoadOpen(true)}
           className="flex items-center gap-2 text-surface-600 dark:text-surface-300 hover:text-primary-600 dark:hover:text-primary-400 font-medium text-sm transition-colors"
         >
           <FolderOpen className="w-4 h-4" /> Load
         </button>
 
-        <button 
+        <button
           onClick={() => setIsImportOpen(true)}
           className="flex items-center gap-2 text-surface-600 dark:text-surface-300 hover:text-primary-600 dark:hover:text-primary-400 font-medium text-sm transition-colors"
         >
           <Upload className="w-4 h-4" /> Import
         </button>
-        
+
         <div className="relative group">
-          <button 
+          <button
             onClick={() => window.print()}
             className="btn-secondary flex items-center gap-2"
           >
             <Download className="w-4 h-4" /> Export PDF
           </button>
-          
+
           {/* Dropdown for TXT export on hover */}
           <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-surface-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 overflow-hidden">
-            <button 
+            <button
               onClick={handleExportTxt}
               className="w-full text-left px-4 py-3 text-sm text-surface-700 hover:bg-surface-50 hover:text-primary-600 flex items-center gap-2 transition-colors font-medium"
             >
@@ -119,8 +148,11 @@ export const Header: React.FC = () => {
           </div>
         </div>
       </div>
-      
-      <ImportModal isOpen={isImportOpen} onClose={() => setIsImportOpen(false)} />
+
+      <ImportModal
+        isOpen={isImportOpen}
+        onClose={() => setIsImportOpen(false)}
+      />
       <LoadTripModal isOpen={isLoadOpen} onClose={() => setIsLoadOpen(false)} />
     </header>
   );

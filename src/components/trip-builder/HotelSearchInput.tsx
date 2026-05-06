@@ -1,9 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Search, MapPin, Loader2 } from 'lucide-react';
-import { MOCK_HOTELS } from '../../services/mockData';
-import { useRouteStore } from '../../store/useRouteStore';
-import { searchPlaces } from '../../services/mapsService';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useRef, useEffect } from "react";
+import { Search, MapPin, Loader2 } from "lucide-react";
+import { MOCK_HOTELS } from "../../services/mockData";
+import { useRouteStore } from "../../store/useRouteStore";
+import { searchPlaces } from "../../services/mapsService";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface HotelSearchInputProps {
   onSelect: (hotel: any) => void;
@@ -11,8 +11,12 @@ interface HotelSearchInputProps {
   currentValue?: string;
 }
 
-export const HotelSearchInput: React.FC<HotelSearchInputProps> = ({ onSelect, placeholder = "Search for a hotel...", currentValue }) => {
-  const [query, setQuery] = useState('');
+export const HotelSearchInput: React.FC<HotelSearchInputProps> = ({
+  onSelect,
+  placeholder = "Search for a hotel...",
+  currentValue,
+}) => {
+  const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [results, setResults] = useState<any[]>([]);
@@ -23,9 +27,13 @@ export const HotelSearchInput: React.FC<HotelSearchInputProps> = ({ onSelect, pl
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (appMode !== 'real') {
+    if (appMode !== "real") {
       if (query.length > 0) {
-        setResults(MOCK_HOTELS.filter(h => h.name.toLowerCase().includes(query.toLowerCase())));
+        setResults(
+          MOCK_HOTELS.filter((h) =>
+            h.name.toLowerCase().includes(query.toLowerCase()),
+          ),
+        );
         setIsOpen(true);
       } else {
         setResults([]);
@@ -51,7 +59,7 @@ export const HotelSearchInput: React.FC<HotelSearchInputProps> = ({ onSelect, pl
         setIsOpen(true);
         updateDropdownPosition();
       } catch (err) {
-        console.error('Hotel search error:', err);
+        console.error("Hotel search error:", err);
       } finally {
         setIsLoading(false);
       }
@@ -67,7 +75,7 @@ export const HotelSearchInput: React.FC<HotelSearchInputProps> = ({ onSelect, pl
   };
 
   const handleSelect = (hotel: any) => {
-    setQuery('');
+    setQuery("");
     setIsOpen(false);
     setIsEditing(false);
     onSelect(hotel);
@@ -77,7 +85,7 @@ export const HotelSearchInput: React.FC<HotelSearchInputProps> = ({ onSelect, pl
     if (inputRef.current) {
       const rect = inputRef.current.getBoundingClientRect();
       setDropdownStyle({
-        position: 'fixed',
+        position: "fixed",
         top: rect.bottom + 4,
         left: rect.left,
         width: rect.width,
@@ -99,24 +107,24 @@ export const HotelSearchInput: React.FC<HotelSearchInputProps> = ({ onSelect, pl
     setTimeout(() => {
       setIsEditing(false);
       setIsOpen(false);
-      setQuery('');
+      setQuery("");
     }, 200);
   };
 
   useEffect(() => {
     if (!isOpen) return;
     updateDropdownPosition();
-    const scrollContainer = inputRef.current?.closest('.overflow-y-auto');
+    const scrollContainer = inputRef.current?.closest(".overflow-y-auto");
     const handleReposition = () => updateDropdownPosition();
-    scrollContainer?.addEventListener('scroll', handleReposition);
-    window.addEventListener('resize', handleReposition);
+    scrollContainer?.addEventListener("scroll", handleReposition);
+    window.addEventListener("resize", handleReposition);
     return () => {
-      scrollContainer?.removeEventListener('scroll', handleReposition);
-      window.removeEventListener('resize', handleReposition);
+      scrollContainer?.removeEventListener("scroll", handleReposition);
+      window.removeEventListener("resize", handleReposition);
     };
   }, [isOpen]);
 
-  const displayValue = isEditing ? query : (currentValue || '');
+  const displayValue = isEditing ? query : currentValue || "";
 
   return (
     <div className="relative w-full">
@@ -128,7 +136,7 @@ export const HotelSearchInput: React.FC<HotelSearchInputProps> = ({ onSelect, pl
             <Search className="text-surface-400 dark:text-surface-500 w-4 h-4" />
           )}
         </div>
-        <input 
+        <input
           ref={inputRef}
           type="text"
           value={displayValue}
@@ -142,7 +150,7 @@ export const HotelSearchInput: React.FC<HotelSearchInputProps> = ({ onSelect, pl
 
       <AnimatePresence>
         {isOpen && results.length > 0 && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 5 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 5 }}
@@ -156,7 +164,9 @@ export const HotelSearchInput: React.FC<HotelSearchInputProps> = ({ onSelect, pl
                 onClick={() => handleSelect(hotel)}
                 className="w-full text-left px-3 py-2 hover:bg-surface-50 dark:hover:bg-surface-700 flex flex-col group transition-colors border-b border-surface-50 dark:border-surface-700 last:border-0"
               >
-                <span className="font-medium text-surface-900 dark:text-white text-sm">{hotel.name}</span>
+                <span className="font-medium text-surface-900 dark:text-white text-sm">
+                  {hotel.name}
+                </span>
                 <span className="text-[11px] text-surface-500 dark:text-surface-400 truncate flex items-center gap-1">
                   <MapPin className="w-3 h-3" /> {hotel.address}
                 </span>
@@ -168,4 +178,3 @@ export const HotelSearchInput: React.FC<HotelSearchInputProps> = ({ onSelect, pl
     </div>
   );
 };
-

@@ -1,7 +1,15 @@
-export type PlaceCategory = 
-  | 'museum' | 'restaurant' | 'coffee_shop' | 'park' 
-  | 'landmark' | 'shopping' | 'entertainment' 
-  | 'beach' | 'religious_site' | 'nightlife' | 'other';
+export type PlaceCategory =
+  | "museum"
+  | "restaurant"
+  | "coffee_shop"
+  | "park"
+  | "landmark"
+  | "shopping"
+  | "entertainment"
+  | "beach"
+  | "religious_site"
+  | "nightlife"
+  | "other";
 
 export interface Place {
   id: string;
@@ -10,7 +18,7 @@ export interface Place {
   lat: number;
   lng: number;
   description: string;
-  descriptionSource: 'user' | 'ai' | 'mock';
+  descriptionSource: "user" | "ai" | "mock";
   category: PlaceCategory;
   estimatedDuration: number; // minutes
   dayIndex: number | null; // 0-indexed day
@@ -27,7 +35,7 @@ export interface Hotel {
   lng: number;
 }
 
-export type TravelMode = 'walking' | 'transit' | 'driving';
+export type TravelMode = "walking" | "transit" | "driving";
 
 export interface RouteSegment {
   distance: number;
@@ -44,6 +52,7 @@ export interface DayRoute {
   totalDistance: number; // in meters
   totalTime: number; // in seconds (travel only)
   totalVisitTime: number; // in seconds (visit durations)
+  manualSequence?: Array<string>; // IDs of stops, hotels, and flights in order
 }
 
 export interface OptimizationResult {

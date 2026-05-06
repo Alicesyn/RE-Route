@@ -1,9 +1,15 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { Place, Hotel, TravelMode, DayRoute, ItinerarySnapshot } from '../types';
-import { solveSingleDay } from '../services/tspSolver';
-import { estimateTime } from '../utils/distance';
-import { format, addDays, parseISO, differenceInDays } from 'date-fns';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import {
+  Place,
+  Hotel,
+  TravelMode,
+  DayRoute,
+  ItinerarySnapshot,
+} from "../types";
+import { solveSingleDay } from "../services/tspSolver";
+import { estimateTime } from "../utils/distance";
+import { format, addDays, parseISO, differenceInDays } from "date-fns";
 
 interface ModeData {
   places: Place[];
@@ -18,19 +24,27 @@ interface RouteState extends ModeData {
   days: number;
   startDate: string; // YYYY-MM-DD
   endDate: string; // YYYY-MM-DD
-  dateMode: 'fixed' | 'duration';
+  dateMode: "fixed" | "duration";
   dayStartTime: string; // HH:mm
   dayEndTime: string; // HH:mm
   showFlights: boolean;
-  arrivalFlight: { time: string, buffer: number, location: Place | null } | null;
-  departureFlight: { time: string, buffer: number, location: Place | null } | null;
+  arrivalFlight: {
+    time: string;
+    buffer: number;
+    location: Place | null;
+  } | null;
+  departureFlight: {
+    time: string;
+    buffer: number;
+    location: Place | null;
+  } | null;
   travelMode: TravelMode;
   dailyBudget: number; // minutes (user-configurable)
-  appMode: 'real' | 'mock' | 'dropdown-mock';
-  theme: 'light' | 'dark';
+  appMode: "real" | "mock" | "dropdown-mock";
+  theme: "light" | "dark";
   optimizedRoutes: DayRoute[];
   savedTrips: ItinerarySnapshot[];
-  
+
   // Per-mode persistence
   mockData: ModeData;
   realData: ModeData;
@@ -40,20 +54,29 @@ interface RouteState extends ModeData {
   setDays: (days: number) => void;
   setStartDate: (date: string) => void;
   setEndDate: (date: string) => void;
-  setDateMode: (mode: 'fixed' | 'duration') => void;
+  setDateMode: (mode: "fixed" | "duration") => void;
   setDayTimes: (start: string, end: string) => void;
   setShowFlights: (show: boolean) => void;
-  setArrivalFlight: (flight: { time: string, buffer: number, location: Place | null } | null) => void;
-  setDepartureFlight: (flight: { time: string, buffer: number, location: Place | null } | null) => void;
+  setArrivalFlight: (
+    flight: { time: string; buffer: number; location: Place | null } | null,
+  ) => void;
+  setDepartureFlight: (
+    flight: { time: string; buffer: number; location: Place | null } | null,
+  ) => void;
   setTravelMode: (mode: TravelMode) => void;
   setDailyBudget: (minutes: number) => void;
-  setAppMode: (mode: 'real' | 'mock' | 'dropdown-mock') => void;
-  setTheme: (theme: 'light' | 'dark') => void;
+  setAppMode: (mode: "real" | "mock" | "dropdown-mock") => void;
+  setTheme: (theme: "light" | "dark") => void;
 
   // Places
-  addPlace: (place: Omit<Place, 'dayIndex' | 'orderInDay' | 'pinnedToDay'>, targetDayIndex?: number) => void;
+  addPlace: (
+    place: Omit<Place, "dayIndex" | "orderInDay" | "pinnedToDay">,
+    targetDayIndex?: number,
+  ) => void;
   updatePlace: (id: string, updates: Partial<Place>) => void;
-  updatePlacesBulk: (updates: { id: string, updates: Partial<Place> }[]) => void;
+  updatePlacesBulk: (
+    updates: { id: string; updates: Partial<Place> }[],
+  ) => void;
   removePlace: (id: string) => void;
   reorderPlaces: (places: Place[]) => void;
   clearAll: () => void;
@@ -73,10 +96,15 @@ interface RouteState extends ModeData {
 
   // Results
   setOptimizedRoutes: (routes: DayRoute[]) => void;
-  updateSegmentTravelMode: (dayIndex: number, segmentIndex: number, mode: TravelMode) => void;
+  updateSegmentTravelMode: (
+    dayIndex: number,
+    segmentIndex: number,
+    mode: TravelMode,
+  ) => void;
 
   // Per-day optimization
   optimizeDay: (dayIndex: number) => void;
+  reorderDayStops: (dayIndex: number, activeId: string, overId: string) => void;
 
   // Trips
   saveTrip: () => void;
@@ -86,234 +114,299 @@ interface RouteState extends ModeData {
 export const useRouteStore = create<RouteState>()(
   persist(
     (set, get) => ({
-      title: 'My RE:Route Trip',
+      title: "My RE:Route Trip",
       days: 3,
-      startDate: format(new Date(), 'yyyy-MM-dd'),
-      endDate: format(addDays(new Date(), 2), 'yyyy-MM-dd'),
-      dateMode: 'duration',
-      dayStartTime: '09:00',
-      dayEndTime: '21:00',
+      startDate: format(new Date(), "yyyy-MM-dd"),
+      endDate: format(addDays(new Date(), 2), "yyyy-MM-dd"),
+      dateMode: "duration",
+      dayStartTime: "09:00",
+      dayEndTime: "21:00",
       showFlights: false,
       arrivalFlight: null,
       departureFlight: null,
-      travelMode: 'driving',
+      travelMode: "driving",
       dailyBudget: 720, // 12 hours default
       places: [],
       hotels: [],
       missingPlaces: [],
-      appMode: 'mock',
-      theme: 'light',
+      appMode: "mock",
+      theme: "light",
       optimizedRoutes: [],
       savedTrips: [],
-      mockData: { places: [], hotels: [], missingPlaces: [], optimizedRoutes: [] },
-      realData: { places: [], hotels: [], missingPlaces: [], optimizedRoutes: [] },
+      mockData: {
+        places: [],
+        hotels: [],
+        missingPlaces: [],
+        optimizedRoutes: [],
+      },
+      realData: {
+        places: [],
+        hotels: [],
+        missingPlaces: [],
+        optimizedRoutes: [],
+      },
 
       setTitle: (title) => set({ title }),
-      setDays: (days) => set((state) => {
-        // Adjust hotels array if days shrink
-        const newHotels = state.hotels.filter(h => h.dayIndex < days);
-        // If a hotel exists for day 0, propagate it to any new days that don't have one
-        const baseHotel = state.hotels.find(h => h.dayIndex === 0);
-        if (baseHotel) {
-          for (let i = 0; i < days; i++) {
-            if (!newHotels.find(h => h.dayIndex === i)) {
-              newHotels.push({ ...baseHotel, dayIndex: i });
+      setDays: (days) =>
+        set((state) => {
+          // Adjust hotels array if days shrink
+          const newHotels = state.hotels.filter((h) => h.dayIndex < days);
+          // If a hotel exists for day 0, propagate it to any new days that don't have one
+          const baseHotel = state.hotels.find((h) => h.dayIndex === 0);
+          if (baseHotel) {
+            for (let i = 0; i < days; i++) {
+              if (!newHotels.find((h) => h.dayIndex === i)) {
+                newHotels.push({ ...baseHotel, dayIndex: i });
+              }
             }
           }
-        }
-        // Reset dayIndex on places that exceed the new days limit
-        const newPlaces = state.places.map(p =>
-          p.dayIndex !== null && p.dayIndex >= days ? { ...p, dayIndex: null, orderInDay: null, pinnedToDay: false } : p
-        );
-        const newEndDate = format(addDays(parseISO(state.startDate), days - 1), 'yyyy-MM-dd');
-        return { days, hotels: newHotels, places: newPlaces, endDate: newEndDate };
-      }),
-      setStartDate: (startDate) => set((state) => {
-        if (state.dateMode === 'fixed') {
-          const days = differenceInDays(parseISO(state.endDate), parseISO(startDate)) + 1;
-          return { startDate, days: Math.max(1, days) };
-        } else {
-          const endDate = format(addDays(parseISO(startDate), state.days - 1), 'yyyy-MM-dd');
-          return { startDate, endDate };
-        }
-      }),
-      setEndDate: (endDate) => set((state) => {
-        const days = differenceInDays(parseISO(endDate), parseISO(state.startDate)) + 1;
-        return { endDate, days: Math.max(1, days) };
-      }),
+          // Reset dayIndex on places that exceed the new days limit
+          const newPlaces = state.places.map((p) =>
+            p.dayIndex !== null && p.dayIndex >= days
+              ? { ...p, dayIndex: null, orderInDay: null, pinnedToDay: false }
+              : p,
+          );
+          const newEndDate = format(
+            addDays(parseISO(state.startDate), days - 1),
+            "yyyy-MM-dd",
+          );
+          return {
+            days,
+            hotels: newHotels,
+            places: newPlaces,
+            endDate: newEndDate,
+          };
+        }),
+      setStartDate: (startDate) =>
+        set((state) => {
+          if (state.dateMode === "fixed") {
+            const days =
+              differenceInDays(parseISO(state.endDate), parseISO(startDate)) +
+              1;
+            return { startDate, days: Math.max(1, days) };
+          } else {
+            const endDate = format(
+              addDays(parseISO(startDate), state.days - 1),
+              "yyyy-MM-dd",
+            );
+            return { startDate, endDate };
+          }
+        }),
+      setEndDate: (endDate) =>
+        set((state) => {
+          const days =
+            differenceInDays(parseISO(endDate), parseISO(state.startDate)) + 1;
+          return { endDate, days: Math.max(1, days) };
+        }),
       setDateMode: (dateMode) => set({ dateMode }),
-      setDayTimes: (dayStartTime, dayEndTime) => set({ dayStartTime, dayEndTime }),
+      setDayTimes: (dayStartTime, dayEndTime) =>
+        set({ dayStartTime, dayEndTime }),
       setShowFlights: (showFlights) => set({ showFlights }),
       setArrivalFlight: (arrivalFlight) => set({ arrivalFlight }),
       setDepartureFlight: (departureFlight) => set({ departureFlight }),
       setTravelMode: (travelMode) => set({ travelMode }),
       setDailyBudget: (dailyBudget) => set({ dailyBudget }),
-      setAppMode: (newMode) => set((state) => {
-        const oldMode = state.appMode;
-        if (oldMode === newMode) return state;
+      setAppMode: (newMode) =>
+        set((state) => {
+          const oldMode = state.appMode;
+          if (oldMode === newMode) return state;
 
-        // 1. Save current state into the storage for the old mode
-        const currentItinerary: ModeData = {
-          places: state.places,
-          hotels: state.hotels,
-          missingPlaces: state.missingPlaces,
-          optimizedRoutes: state.optimizedRoutes
-        };
+          // 1. Save current state into the storage for the old mode
+          const currentItinerary: ModeData = {
+            places: state.places,
+            hotels: state.hotels,
+            missingPlaces: state.missingPlaces,
+            optimizedRoutes: state.optimizedRoutes,
+          };
 
-        const isOldModeReal = oldMode === 'real';
-        const updatedMockData = isOldModeReal ? state.mockData : currentItinerary;
-        const updatedRealData = isOldModeReal ? currentItinerary : state.realData;
+          const isOldModeReal = oldMode === "real";
+          const updatedMockData = isOldModeReal
+            ? state.mockData
+            : currentItinerary;
+          const updatedRealData = isOldModeReal
+            ? currentItinerary
+            : state.realData;
 
-        // 2. Load state from the storage for the new mode
-        const isNewModeReal = newMode === 'real';
-        const targetData = isNewModeReal ? updatedRealData : updatedMockData;
+          // 2. Load state from the storage for the new mode
+          const isNewModeReal = newMode === "real";
+          const targetData = isNewModeReal ? updatedRealData : updatedMockData;
 
-        return {
-          appMode: newMode,
-          mockData: updatedMockData,
-          realData: updatedRealData,
-          ...targetData
-        };
-      }),
+          return {
+            appMode: newMode,
+            mockData: updatedMockData,
+            realData: updatedRealData,
+            ...targetData,
+          };
+        }),
       setTheme: (theme) => set({ theme }),
 
-      addPlace: (place, targetDayIndex) => set((state) => {
-        const newPlace: Place = {
-          ...place,
-          dayIndex: targetDayIndex !== undefined ? targetDayIndex : null,
-          orderInDay: targetDayIndex !== undefined
-            ? state.places.filter(p => p.dayIndex === targetDayIndex).length
-            : null,
-          pinnedToDay: targetDayIndex !== undefined,
-        };
-        return { places: [...state.places, newPlace] };
-      }),
+      addPlace: (place, targetDayIndex) =>
+        set((state) => {
+          const newPlace: Place = {
+            ...place,
+            dayIndex: targetDayIndex !== undefined ? targetDayIndex : null,
+            orderInDay:
+              targetDayIndex !== undefined
+                ? state.places.filter((p) => p.dayIndex === targetDayIndex)
+                    .length
+                : null,
+            pinnedToDay: targetDayIndex !== undefined,
+          };
+          return { places: [...state.places, newPlace] };
+        }),
 
-      updatePlace: (id, updates) => set((state) => ({
-        places: state.places.map(p => p.id === id ? { ...p, ...updates } : p)
-      })),
+      updatePlace: (id, updates) =>
+        set((state) => ({
+          places: state.places.map((p) =>
+            p.id === id ? { ...p, ...updates } : p,
+          ),
+        })),
 
-      updatePlacesBulk: (updates) => set((state) => ({
-        places: state.places.map(p => {
-          const update = updates.find(u => u.id === p.id);
-          return update ? { ...p, ...update.updates } : p;
-        })
-      })),
+      updatePlacesBulk: (updates) =>
+        set((state) => ({
+          places: state.places.map((p) => {
+            const update = updates.find((u) => u.id === p.id);
+            return update ? { ...p, ...update.updates } : p;
+          }),
+        })),
 
-      removePlace: (id) => set((state) => ({
-        places: state.places.filter(p => p.id !== id)
-      })),
+      removePlace: (id) =>
+        set((state) => ({
+          places: state.places.filter((p) => p.id !== id),
+        })),
 
       reorderPlaces: (places) => set({ places }),
 
       clearAll: () => {
-        console.log('Zustand clearAll executed');
+        console.log("Zustand clearAll executed");
         set({ places: [], hotels: [], missingPlaces: [], optimizedRoutes: [] });
       },
 
-      addMissingPlace: (name) => set((state) => ({
-        missingPlaces: state.missingPlaces.includes(name) 
-          ? state.missingPlaces 
-          : [...state.missingPlaces, name]
-      })),
-      removeMissingPlace: (name) => set((state) => ({
-        missingPlaces: state.missingPlaces.filter(n => n !== name)
-      })),
+      addMissingPlace: (name) =>
+        set((state) => ({
+          missingPlaces: state.missingPlaces.includes(name)
+            ? state.missingPlaces
+            : [...state.missingPlaces, name],
+        })),
+      removeMissingPlace: (name) =>
+        set((state) => ({
+          missingPlaces: state.missingPlaces.filter((n) => n !== name),
+        })),
       clearMissingPlaces: () => set({ missingPlaces: [] }),
 
       // Day assignment actions
-      assignPlaceToDay: (placeId, dayIndex) => set((state) => ({
-        places: state.places.map(p =>
-          p.id === placeId
-            ? { ...p, dayIndex, orderInDay: state.places.filter(pl => pl.dayIndex === dayIndex).length, pinnedToDay: true }
-            : p
-        )
-      })),
+      assignPlaceToDay: (placeId, dayIndex) =>
+        set((state) => ({
+          places: state.places.map((p) =>
+            p.id === placeId
+              ? {
+                  ...p,
+                  dayIndex,
+                  orderInDay: state.places.filter(
+                    (pl) => pl.dayIndex === dayIndex,
+                  ).length,
+                  pinnedToDay: true,
+                }
+              : p,
+          ),
+        })),
 
-      unassignPlace: (placeId) => set((state) => {
-        const place = state.places.find(p => p.id === placeId);
-        const dayIndex = place?.dayIndex;
+      unassignPlace: (placeId) =>
+        set((state) => {
+          const place = state.places.find((p) => p.id === placeId);
+          const dayIndex = place?.dayIndex;
 
-        const newPlaces = state.places.map(p =>
-          p.id === placeId
-            ? { ...p, dayIndex: null, orderInDay: null, pinnedToDay: false }
-            : p
-        );
-
-        let newRoutes = [...state.optimizedRoutes];
-        if (dayIndex !== null && dayIndex !== undefined) {
-          // Re-solve the day to remove the stop and update segments
-          const dayPlaces = newPlaces.filter(p => p.dayIndex === dayIndex);
-          const result = solveSingleDay(
-            dayPlaces,
-            state.hotels,
-            dayIndex,
-            state.travelMode,
-            (dayIndex === 0 && state.showFlights) ? state.arrivalFlight?.location : null,
-            (dayIndex === state.days - 1 && state.showFlights) ? state.departureFlight?.location : null
+          const newPlaces = state.places.map((p) =>
+            p.id === placeId
+              ? { ...p, dayIndex: null, orderInDay: null, pinnedToDay: false }
+              : p,
           );
-          const idx = newRoutes.findIndex(r => r.day === dayIndex);
-          if (idx >= 0) newRoutes[idx] = result;
-        }
 
-        return { places: newPlaces, optimizedRoutes: newRoutes };
-      }),
+          let newRoutes = [...state.optimizedRoutes];
+          if (dayIndex !== null && dayIndex !== undefined) {
+            // Re-solve the day to remove the stop and update segments
+            const dayPlaces = newPlaces.filter((p) => p.dayIndex === dayIndex);
+            const result = solveSingleDay(
+              dayPlaces,
+              state.hotels,
+              dayIndex,
+              state.travelMode,
+              dayIndex === 0 && state.showFlights
+                ? state.arrivalFlight?.location
+                : null,
+              dayIndex === state.days - 1 && state.showFlights
+                ? state.departureFlight?.location
+                : null,
+            );
+            const idx = newRoutes.findIndex((r) => r.day === dayIndex);
+            if (idx >= 0) newRoutes[idx] = result;
+          }
 
-      setHotelForDay: (dayIndex, hotel) => set((state) => {
-        const existing = state.hotels.filter(h => h.dayIndex !== dayIndex);
-        return { hotels: [...existing, hotel] };
-      }),
+          return { places: newPlaces, optimizedRoutes: newRoutes };
+        }),
 
-      applyHotelToAllDays: (hotel) => set((state) => {
-        const hotels = Array.from({ length: state.days }).map((_, i) => ({
-          ...hotel,
-          dayIndex: i
-        }));
-        return { hotels };
-      }),
+      setHotelForDay: (dayIndex, hotel) =>
+        set((state) => {
+          const existing = state.hotels.filter((h) => h.dayIndex !== dayIndex);
+          return { hotels: [...existing, hotel] };
+        }),
+
+      applyHotelToAllDays: (hotel) =>
+        set((state) => {
+          const hotels = Array.from({ length: state.days }).map((_, i) => ({
+            ...hotel,
+            dayIndex: i,
+          }));
+          return { hotels };
+        }),
 
       setOptimizedRoutes: (optimizedRoutes) => set({ optimizedRoutes }),
-      
-      updateSegmentTravelMode: (dayIndex, segmentIndex, mode) => set((state) => {
-        const newRoutes = [...state.optimizedRoutes];
-        const routeIdx = newRoutes.findIndex(r => r.day === dayIndex);
-        if (routeIdx >= 0) {
-          const route = { ...newRoutes[routeIdx] };
-          const segments = [...route.segments];
-          if (segments[segmentIndex]) {
-            const seg = { ...segments[segmentIndex] };
-            seg.travelMode = mode;
-            seg.time = estimateTime(seg.distance, mode);
-            segments[segmentIndex] = seg;
-            
-            // Recalculate total time
-            route.segments = segments;
-            route.totalTime = segments.reduce((sum, s) => sum + s.time, 0);
-            newRoutes[routeIdx] = route;
+
+      updateSegmentTravelMode: (dayIndex, segmentIndex, mode) =>
+        set((state) => {
+          const newRoutes = [...state.optimizedRoutes];
+          const routeIdx = newRoutes.findIndex((r) => r.day === dayIndex);
+          if (routeIdx >= 0) {
+            const route = { ...newRoutes[routeIdx] };
+            const segments = [...route.segments];
+            if (segments[segmentIndex]) {
+              const seg = { ...segments[segmentIndex] };
+              seg.travelMode = mode;
+              seg.time = estimateTime(seg.distance, mode);
+              segments[segmentIndex] = seg;
+
+              // Recalculate total time
+              route.segments = segments;
+              route.totalTime = segments.reduce((sum, s) => sum + s.time, 0);
+              newRoutes[routeIdx] = route;
+            }
           }
-        }
-        return { optimizedRoutes: newRoutes };
-      }),
+          return { optimizedRoutes: newRoutes };
+        }),
 
       // Per-day optimization
       optimizeDay: (dayIndex) => {
         const state = get();
-        const dayPlaces = state.places.filter(p => p.dayIndex === dayIndex);
+        const dayPlaces = state.places.filter((p) => p.dayIndex === dayIndex);
         if (dayPlaces.length === 0) return;
 
         const result = solveSingleDay(
-          dayPlaces, 
-          state.hotels, 
-          dayIndex, 
+          dayPlaces,
+          state.hotels,
+          dayIndex,
           state.travelMode,
-          (dayIndex === 0 && state.showFlights) ? state.arrivalFlight?.location : null,
-          (dayIndex === state.days - 1 && state.showFlights) ? state.departureFlight?.location : null
+          dayIndex === 0 && state.showFlights
+            ? state.arrivalFlight?.location
+            : null,
+          dayIndex === state.days - 1 && state.showFlights
+            ? state.departureFlight?.location
+            : null,
         );
 
         // Update only this day in optimizedRoutes
         set((state) => {
           const newRoutes = [...state.optimizedRoutes];
-          const existingIdx = newRoutes.findIndex(r => r.day === dayIndex);
+          const existingIdx = newRoutes.findIndex((r) => r.day === dayIndex);
           if (existingIdx >= 0) {
             newRoutes[existingIdx] = result;
           } else {
@@ -322,9 +415,9 @@ export const useRouteStore = create<RouteState>()(
           }
 
           // Also update place order in the places array based on optimization result
-          const updatedPlaces = state.places.map(p => {
+          const updatedPlaces = state.places.map((p) => {
             if (p.dayIndex !== dayIndex) return p;
-            const stopIdx = result.stops.findIndex(s => s.id === p.id);
+            const stopIdx = result.stops.findIndex((s) => s.id === p.id);
             return stopIdx >= 0 ? { ...p, orderInDay: stopIdx } : p;
           });
 
@@ -332,42 +425,113 @@ export const useRouteStore = create<RouteState>()(
         });
       },
 
-      saveTrip: () => set((state) => {
-        const snapshot: ItinerarySnapshot = {
-          id: `trip_${Date.now()}`,
-          title: state.title,
-          days: state.days,
-          travelMode: state.travelMode,
-          places: state.places,
-          hotels: state.hotels,
-          optimizedRoutes: state.optimizedRoutes,
-          savedAt: Date.now()
-        };
-        // Update existing trip if title matches exactly (simple heuristic), otherwise create new
-        const existingIndex = state.savedTrips.findIndex(t => t.title === state.title);
-        if (existingIndex >= 0) {
-          const newTrips = [...state.savedTrips];
-          newTrips[existingIndex] = { ...snapshot, id: state.savedTrips[existingIndex].id }; // keep old ID
-          return { savedTrips: newTrips };
-        }
-        return { savedTrips: [...state.savedTrips, snapshot] };
-      }),
+      reorderDayStops: (dayIndex, activeId, overId) =>
+        set((state) => {
+          const routes = [...state.optimizedRoutes];
+          const routeIdx = routes.findIndex((r) => r.day === dayIndex);
+          if (routeIdx === -1) return state;
 
-      loadTrip: (id) => set((state) => {
-        const trip = state.savedTrips.find(t => t.id === id);
-        if (!trip) return state;
-        return {
-          title: trip.title,
-          days: trip.days,
-          travelMode: trip.travelMode,
-          places: trip.places,
-          hotels: trip.hotels,
-          optimizedRoutes: trip.optimizedRoutes
-        };
-      }),
+          const route = routes[routeIdx];
+
+          // Build the CURRENT order of all sortable items for this day
+          let currentOrder: string[] = [];
+          if (route.manualSequence) {
+            currentOrder = [...route.manualSequence];
+          } else {
+            if (dayIndex === 0 && state.showFlights && state.arrivalFlight)
+              currentOrder.push("arrival");
+            if (route.startHotel) currentOrder.push("start-hotel");
+            route.stops.forEach((s) => currentOrder.push(s.id));
+            if (route.endHotel) currentOrder.push("end-hotel");
+            if (
+              dayIndex === state.days - 1 &&
+              state.showFlights &&
+              state.departureFlight
+            )
+              currentOrder.push("departure");
+          }
+
+          const oldIndex = currentOrder.indexOf(activeId);
+          const newIndex = currentOrder.indexOf(overId);
+
+          if (oldIndex === -1 || newIndex === -1) return state;
+
+          const newSequence = [...currentOrder];
+          const [movedItem] = newSequence.splice(oldIndex, 1);
+          newSequence.splice(newIndex, 0, movedItem);
+
+          const dayPlaces = state.places.filter((p) => p.dayIndex === dayIndex);
+          const result = solveSingleDay(
+            dayPlaces,
+            state.hotels,
+            dayIndex,
+            state.travelMode,
+            dayIndex === 0 && state.showFlights
+              ? state.arrivalFlight?.location
+              : null,
+            dayIndex === state.days - 1 && state.showFlights
+              ? state.departureFlight?.location
+              : null,
+            true, // manualOrder = true
+            newSequence,
+          );
+
+          routes[routeIdx] = result;
+
+          const updatedPlaces = state.places.map((p) => {
+            if (p.dayIndex !== dayIndex) return p;
+            const stopIdx = result.stops.findIndex((s) => s.id === p.id);
+            return stopIdx >= 0
+              ? { ...p, orderInDay: stopIdx, pinnedToDay: true }
+              : p;
+          });
+
+          return { optimizedRoutes: routes, places: updatedPlaces };
+        }),
+
+      saveTrip: () =>
+        set((state) => {
+          const snapshot: ItinerarySnapshot = {
+            id: `trip_${Date.now()}`,
+            title: state.title,
+            days: state.days,
+            travelMode: state.travelMode,
+            places: state.places,
+            hotels: state.hotels,
+            optimizedRoutes: state.optimizedRoutes,
+            savedAt: Date.now(),
+          };
+          // Update existing trip if title matches exactly (simple heuristic), otherwise create new
+          const existingIndex = state.savedTrips.findIndex(
+            (t) => t.title === state.title,
+          );
+          if (existingIndex >= 0) {
+            const newTrips = [...state.savedTrips];
+            newTrips[existingIndex] = {
+              ...snapshot,
+              id: state.savedTrips[existingIndex].id,
+            }; // keep old ID
+            return { savedTrips: newTrips };
+          }
+          return { savedTrips: [...state.savedTrips, snapshot] };
+        }),
+
+      loadTrip: (id) =>
+        set((state) => {
+          const trip = state.savedTrips.find((t) => t.id === id);
+          if (!trip) return state;
+          return {
+            title: trip.title,
+            days: trip.days,
+            travelMode: trip.travelMode,
+            places: trip.places,
+            hotels: trip.hotels,
+            optimizedRoutes: trip.optimizedRoutes,
+          };
+        }),
     }),
     {
-      name: 'reroute-storage',
-    }
-  )
+      name: "reroute-storage",
+    },
+  ),
 );

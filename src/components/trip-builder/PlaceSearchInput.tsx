@@ -1,18 +1,31 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Search, MapPin, Loader2, Plane, Train, MapPinIcon, X } from 'lucide-react';
-import { useRouteStore } from '../../store/useRouteStore';
-import { searchPlaces } from '../../services/mapsService';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useRef, useEffect } from "react";
+import {
+  Search,
+  MapPin,
+  Loader2,
+  Plane,
+  Train,
+  MapPinIcon,
+  X,
+} from "lucide-react";
+import { useRouteStore } from "../../store/useRouteStore";
+import { searchPlaces } from "../../services/mapsService";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface PlaceSearchInputProps {
   onSelect: (place: any) => void;
   placeholder?: string;
   currentValue?: string;
-  icon?: 'airport' | 'station' | 'pin';
+  icon?: "airport" | "station" | "pin";
 }
 
-export const PlaceSearchInput: React.FC<PlaceSearchInputProps> = ({ onSelect, placeholder = "Search for a place...", currentValue, icon = 'pin' }) => {
-  const [query, setQuery] = useState('');
+export const PlaceSearchInput: React.FC<PlaceSearchInputProps> = ({
+  onSelect,
+  placeholder = "Search for a place...",
+  currentValue,
+  icon = "pin",
+}) => {
+  const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [results, setResults] = useState<any[]>([]);
@@ -22,14 +35,32 @@ export const PlaceSearchInput: React.FC<PlaceSearchInputProps> = ({ onSelect, pl
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (appMode !== 'real') {
+    if (appMode !== "real") {
       // Simple mock for airports/stations
       const mockPlaces = [
-        { id: 'm1', name: 'International Airport', address: '123 Terminal Blvd', category: 'transport', lat: 0, lng: 0 },
-        { id: 'm2', name: 'Central Station', address: 'Main St', category: 'transport', lat: 0, lng: 0 }
+        {
+          id: "m1",
+          name: "International Airport",
+          address: "123 Terminal Blvd",
+          category: "transport",
+          lat: 0,
+          lng: 0,
+        },
+        {
+          id: "m2",
+          name: "Central Station",
+          address: "Main St",
+          category: "transport",
+          lat: 0,
+          lng: 0,
+        },
       ];
       if (query.length > 0) {
-        setResults(mockPlaces.filter(p => p.name.toLowerCase().includes(query.toLowerCase())));
+        setResults(
+          mockPlaces.filter((p) =>
+            p.name.toLowerCase().includes(query.toLowerCase()),
+          ),
+        );
         setIsOpen(true);
       } else {
         setResults([]);
@@ -53,7 +84,7 @@ export const PlaceSearchInput: React.FC<PlaceSearchInputProps> = ({ onSelect, pl
         setResults(mapsResults);
         setIsOpen(true);
       } catch (error) {
-        console.error('Place search failed:', error);
+        console.error("Place search failed:", error);
       } finally {
         setIsLoading(false);
       }
@@ -61,8 +92,10 @@ export const PlaceSearchInput: React.FC<PlaceSearchInputProps> = ({ onSelect, pl
   }, [query, appMode]);
 
   const IconComponent = () => {
-    if (icon === 'airport') return <Plane className="w-4 h-4 text-surface-400" />;
-    if (icon === 'station') return <Train className="w-4 h-4 text-surface-400" />;
+    if (icon === "airport")
+      return <Plane className="w-4 h-4 text-surface-400" />;
+    if (icon === "station")
+      return <Train className="w-4 h-4 text-surface-400" />;
     return <MapPinIcon className="w-4 h-4 text-surface-400" />;
   };
 
@@ -70,14 +103,24 @@ export const PlaceSearchInput: React.FC<PlaceSearchInputProps> = ({ onSelect, pl
     <div className="relative">
       <div className="relative group">
         <div className="absolute left-3 top-1/2 -translate-y-1/2">
-          {isLoading ? <Loader2 className="w-4 h-4 text-primary-500 animate-spin" /> : <IconComponent />}
+          {isLoading ? (
+            <Loader2 className="w-4 h-4 text-primary-500 animate-spin" />
+          ) : (
+            <IconComponent />
+          )}
         </div>
         <input
           ref={inputRef}
           type="text"
-          value={isEditing ? query : (currentValue || query)}
-          onChange={(e) => { setQuery(e.target.value); setIsEditing(true); }}
-          onFocus={() => { setIsOpen(results.length > 0); setIsEditing(true); }}
+          value={isEditing ? query : currentValue || query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setIsEditing(true);
+          }}
+          onFocus={() => {
+            setIsOpen(results.length > 0);
+            setIsEditing(true);
+          }}
           placeholder={placeholder}
           className="w-full bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl py-2.5 pl-10 pr-10 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-surface-900 dark:text-white"
         />
@@ -85,7 +128,7 @@ export const PlaceSearchInput: React.FC<PlaceSearchInputProps> = ({ onSelect, pl
           <button
             onClick={(e) => {
               e.stopPropagation();
-              setQuery('');
+              setQuery("");
               onSelect(null);
               setIsEditing(false);
               setIsOpen(false);
@@ -120,8 +163,12 @@ export const PlaceSearchInput: React.FC<PlaceSearchInputProps> = ({ onSelect, pl
                   <MapPin className="w-4 h-4 text-surface-500" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-bold text-surface-900 dark:text-white truncate">{place.name}</p>
-                  <p className="text-xs text-surface-500 truncate">{place.address}</p>
+                  <p className="text-sm font-bold text-surface-900 dark:text-white truncate">
+                    {place.name}
+                  </p>
+                  <p className="text-xs text-surface-500 truncate">
+                    {place.address}
+                  </p>
                 </div>
               </button>
             ))}

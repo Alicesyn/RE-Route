@@ -1,27 +1,62 @@
-import React, { useState } from 'react';
-import { useRouteStore } from '../../store/useRouteStore';
-import { Clock, Building2, Wand2, X, Timer, Car, Footprints, Train, ChevronDown, PlaneTakeoff, PlaneLanding } from 'lucide-react';
-import { TravelMode, RouteSegment } from '../../types';
-import { getCategoryEmoji } from '../../utils/categoryUtils';
-import { format, addDays, parseISO } from 'date-fns';
+import React, { useState } from "react";
+import { useRouteStore } from "../../store/useRouteStore";
+import {
+  Clock,
+  Building2,
+  Wand2,
+  X,
+  Timer,
+  Car,
+  Footprints,
+  Train,
+  ChevronDown,
+  PlaneTakeoff,
+  PlaneLanding,
+  GripVertical,
+} from "lucide-react";
+import { TravelMode, RouteSegment } from "../../types";
+import { getCategoryEmoji } from "../../utils/categoryUtils";
+import { format, addDays, parseISO } from "date-fns";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 const formatTime = (totalMinutes: number) => {
   const hours = Math.floor(totalMinutes / 60) % 24;
   const mins = Math.floor(totalMinutes % 60);
-  const period = hours >= 12 ? 'PM' : 'AM';
+  const period = hours >= 12 ? "PM" : "AM";
   const displayHours = hours % 12 || 12;
-  return `${displayHours}:${mins.toString().padStart(2, '0')} ${period}`;
+  return `${displayHours}:${mins.toString().padStart(2, "0")} ${period}`;
 };
 
 const formatTimeString = (timeStr: string) => {
-  if (!timeStr) return '';
-  const [h, m] = timeStr.split(':').map(Number);
+  if (!timeStr) return "";
+  const [h, m] = timeStr.split(":").map(Number);
   return formatTime(h * 60 + m);
 };
 
-const BufferPill: React.FC<{ minutes: number }> = ({ minutes }) => {
+const BufferPill: React.FC<{ minutes: number; showLine?: boolean }> = ({
+  minutes,
+  showLine = true,
+}) => {
   return (
     <div className="pt-0 pb-3 pl-12 relative group">
+      {/* Line connector segment */}
+      {showLine && (
+        <div className="absolute left-5 top-0 bottom-0 w-0.5 bg-surface-200 dark:bg-surface-700/50" />
+      )}
       <div className="travel-pill inline-flex items-center gap-1.5 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 px-2 py-1 rounded-full text-[10px] font-bold text-surface-400 uppercase tracking-tight">
         <Clock className="w-3 h-3" />
         <span>{minutes} min buffer</span>
@@ -32,16 +67,243 @@ const BufferPill: React.FC<{ minutes: number }> = ({ minutes }) => {
 
 const ExpandableDescription: React.FC<{ text: string }> = ({ text }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const shouldTruncate = text.length > 100;
 
   return (
-    <div className="mt-0.5">
+    <div className="relative">
       <p
-        onClick={() => setIsExpanded(!isExpanded)}
-        className={`text-xs text-surface-500 dark:text-surface-400 cursor-pointer hover:text-surface-700 dark:hover:text-surface-200 transition-colors ${isExpanded ? '' : 'line-clamp-1'}`}
-        title={isExpanded ? "Click to collapse" : "Click to show more"}
+        className={`text-xs text-surface-500 dark:text-surface-400 leading-relaxed ${!isExpanded && shouldTruncate ? "line-clamp-2" : ""}`}
       >
         {text}
       </p>
+      {shouldTruncate && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsExpanded(!isExpanded);
+          }}
+          className="text-[10px] font-bold text-primary-600 dark:text-primary-400 hover:underline mt-1"
+        >
+          {isExpanded ? "Show Less" : "Show More"}
+        </button>
+      )}
+    </div>
+  );
+};
+
+interface SortableStopProps {
+  stop: any;
+  stopIdx: number;
+  stopArrivalTime: number;
+  isFirst: boolean;
+  isLast: boolean;
+  unassignPlace: (id: string) => void;
+  leadingSegIdx: number;
+  route: any;
+  dayIndex: number;
+  currentTime: number;
+}
+
+const SortableStop: React.FC<SortableStopProps> = ({
+  stop,
+  stopArrivalTime,
+  isFirst,
+  isLast,
+  unassignPlace,
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: stop.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : 1,
+    position: "relative" as const,
+    opacity: isDragging ? 0.3 : 1,
+    scale: isDragging ? 1.02 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`relative group ${isDragging ? "cursor-grabbing" : ""}`}
+    >
+      {/* Visual Drop Indicator */}
+      {isDragging && (
+        <div className="absolute inset-x-0 -top-2 h-1 bg-primary-500/50 rounded-full blur-[1px] animate-pulse" />
+      )}
+
+      {/* Line connector */}
+      <div
+        className={`absolute left-5 w-0.5 bg-surface-200 dark:bg-surface-700/50 ${isFirst ? "top-5" : "top-0"} ${isLast ? "h-5" : "bottom-0"}`}
+      />
+
+      <div className="flex gap-4 relative z-10">
+        <div className="relative z-20">
+          <div className="w-10 h-10 rounded-full bg-white dark:bg-surface-800 border-2 border-surface-100 dark:border-surface-700 flex items-center justify-center shrink-0 shadow-sm group-hover:border-primary-500 transition-colors">
+            <span className="text-sm">{getCategoryEmoji(stop.category)}</span>
+          </div>
+
+          {/* Drag Handle */}
+          <div
+            {...attributes}
+            {...listeners}
+            className="absolute -left-7 top-5 -translate-y-1/2 p-1 text-surface-300 dark:text-surface-600 hover:text-surface-600 dark:hover:text-surface-300 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <GripVertical className="w-4 h-4" />
+          </div>
+        </div>
+
+        <div className="flex-1 min-w-0 pt-0.5 pb-4">
+          <div className="flex items-center justify-between gap-2 relative">
+            <h4 className="text-sm font-bold text-surface-900 dark:text-white truncate group-hover:text-primary-600 transition-colors pr-8">
+              {stop.name}
+            </h4>
+            <span className="text-[10px] font-bold font-mono text-surface-400 shrink-0">
+              {formatTime(stopArrivalTime)}
+            </span>
+
+            <button
+              onClick={() => unassignPlace(stop.id)}
+              className="absolute top-1/2 -translate-y-1/2 right-[-10px] opacity-0 group-hover:opacity-100 p-1.5 bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-600 text-surface-400 hover:text-red-500 hover:border-red-200 dark:hover:border-red-900/50 shadow-lg rounded-lg transition-all z-20"
+              title="Remove from day"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {stop.description && (
+            <div className="mt-1">
+              <ExpandableDescription text={stop.description} />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const SortableAnchor: React.FC<{
+  id: string;
+  type: "arrival" | "departure" | "start-hotel" | "end-hotel";
+  name: string;
+  time?: string;
+  calculatedTime?: number;
+  buffer?: number;
+  isFirst: boolean;
+  isLast: boolean;
+}> = ({ id, type, name, time, calculatedTime, buffer, isFirst, isLast }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : 1,
+    position: "relative" as const,
+    opacity: isDragging ? 0.3 : 1,
+    scale: isDragging ? 1.02 : 1,
+  };
+
+  const getIcon = () => {
+    switch (type) {
+      case "arrival":
+        return <PlaneLanding className="w-5 h-5" />;
+      case "departure":
+        return <PlaneTakeoff className="w-5 h-5" />;
+      default:
+        return <Building2 className="w-5 h-5" />;
+    }
+  };
+
+  const getColors = () => {
+    switch (type) {
+      case "arrival":
+        return "bg-emerald-100 dark:bg-emerald-900 text-emerald-600 dark:text-emerald-400";
+      case "departure":
+        return "bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-400";
+      default:
+        return "bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400";
+    }
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`relative group ${isDragging ? "cursor-grabbing" : ""}`}
+    >
+      {/* Visual Drop Indicator */}
+      {isDragging && (
+        <div className="absolute inset-x-0 -top-2 h-1 bg-primary-500/50 rounded-full blur-[1px] animate-pulse" />
+      )}
+
+      {/* Line connector */}
+      <div
+        className={`absolute left-5 w-0.5 bg-surface-200 dark:bg-surface-700/50 ${isFirst ? "top-5" : "top-0"} ${isLast ? "h-5" : "bottom-0"}`}
+      />
+
+      <div className="flex items-start gap-4 relative z-20">
+        <div className="relative">
+          <div
+            className={`w-10 h-10 rounded-full ${getColors()} flex items-center justify-center shrink-0 shadow-sm border border-white/50 dark:border-surface-700`}
+          >
+            {getIcon()}
+          </div>
+
+          {/* Drag Handle */}
+          <div
+            {...attributes}
+            {...listeners}
+            className="absolute -left-7 top-5 -translate-y-1/2 p-1 text-surface-300 dark:text-surface-600 hover:text-surface-600 dark:hover:text-surface-300 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <GripVertical className="w-4 h-4" />
+          </div>
+        </div>
+
+        <div className="flex-1 min-w-0 pt-0.5 pb-2">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-bold text-surface-900 dark:text-white truncate">
+              {name}
+            </h4>
+            {time && (
+              <span className="text-[10px] font-bold font-mono text-surface-400">
+                {formatTimeString(time)}
+              </span>
+            )}
+            {calculatedTime !== undefined && (
+              <span className="text-[10px] font-bold font-mono text-surface-400">
+                {formatTime(calculatedTime)}
+              </span>
+            )}
+          </div>
+          <p className="text-[10px] text-surface-500 uppercase font-bold tracking-tight">
+            {type === "arrival"
+              ? "Airport/Station Arrival"
+              : type === "departure"
+                ? "Trip Departure"
+                : type === "start-hotel"
+                  ? "Day Start / Hotel"
+                  : "Day End / Hotel"}
+          </p>
+        </div>
+      </div>
+      {buffer !== undefined && (
+        <BufferPill minutes={buffer} showLine={!isLast} />
+      )}
     </div>
   );
 };
@@ -54,20 +316,29 @@ const SegmentPill: React.FC<{
   const { updateSegmentTravelMode } = useRouteStore();
 
   const handleModeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    updateSegmentTravelMode(dayIndex, segmentIndex, e.target.value as TravelMode);
+    updateSegmentTravelMode(
+      dayIndex,
+      segmentIndex,
+      e.target.value as TravelMode,
+    );
   };
 
   const getModeIcon = () => {
     switch (segment.travelMode) {
-      case 'walking': return <Footprints className="w-3.5 h-3.5" />;
-      case 'transit': return <Train className="w-3.5 h-3.5" />;
-      case 'driving':
-      default: return <Car className="w-3.5 h-3.5" />;
+      case "walking":
+        return <Footprints className="w-3.5 h-3.5" />;
+      case "transit":
+        return <Train className="w-3.5 h-3.5" />;
+      case "driving":
+      default:
+        return <Car className="w-3.5 h-3.5" />;
     }
   };
 
   return (
     <div className="pt-0 pb-3 pl-12 relative group">
+      {/* Line connector segment - always full height for segments as they are intermediate */}
+      <div className="absolute left-5 top-0 bottom-0 w-0.5 bg-surface-200 dark:bg-surface-700/50" />
       <div className="travel-pill inline-flex items-center gap-1.5 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 px-2 py-1 rounded-full text-xs font-medium text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors cursor-pointer relative overflow-hidden">
         {getModeIcon()}
         <span>{Math.round(segment.time / 60)} min</span>
@@ -75,7 +346,7 @@ const SegmentPill: React.FC<{
         <span>{(segment.distance / 1000).toFixed(1)} km</span>
 
         <select
-          value={segment.travelMode || 'driving'}
+          value={segment.travelMode || "driving"}
           onChange={handleModeChange}
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
           title="Change travel mode for this segment"
@@ -92,24 +363,47 @@ const SegmentPill: React.FC<{
 
 export const DailySchedule: React.FC = () => {
   const {
-    optimizedRoutes, optimizeDay, unassignPlace,
-    startDate, dateMode, dayStartTime, dayEndTime,
-    showFlights, arrivalFlight, departureFlight
+    optimizedRoutes,
+    optimizeDay,
+    unassignPlace,
+    reorderDayStops,
+    startDate,
+    dateMode,
+    dayStartTime,
+    dayEndTime,
+    showFlights,
+    arrivalFlight,
+    departureFlight,
   } = useRouteStore();
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
 
   if (optimizedRoutes.length === 0) return null;
 
   // Calculate day total in minutes
-  const [startH, startM] = dayStartTime.split(':').map(Number);
-  const [endH, endM] = dayEndTime.split(':').map(Number);
-  let baseDayMinutes = (endH * 60 + endM) - (startH * 60 + startM);
+  const [startH, startM] = dayStartTime.split(":").map(Number);
+  const [endH, endM] = dayEndTime.split(":").map(Number);
+  let baseDayMinutes = endH * 60 + endM - (startH * 60 + startM);
   if (baseDayMinutes < 0) baseDayMinutes += 24 * 60; // Handle overnight
 
   const scrollToDay = (dayIndex: number) => {
     const element = document.getElementById(`schedule-day-${dayIndex}`);
     if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
+      element.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "start",
+      });
     }
   };
 
@@ -117,13 +411,17 @@ export const DailySchedule: React.FC = () => {
     <div className="schedule-container">
       <div className="px-6 py-3 border-b border-surface-100 dark:border-surface-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-50 dark:bg-surface-800 shrink-0">
         <div className="flex items-center gap-4">
-          <h2 className="text-lg font-bold text-surface-900 dark:text-white">Optimized Schedule</h2>
+          <h2 className="text-lg font-bold text-surface-900 dark:text-white">
+            Optimized Schedule
+          </h2>
         </div>
 
         {/* Day Quick Navigation */}
         <div className="flex items-center gap-3 overflow-hidden min-w-0 flex-1 sm:justify-end">
           <div className="flex items-center gap-2 shrink-0">
-            <span className="text-xs font-bold text-surface-400 uppercase tracking-wider whitespace-nowrap">Jump to:</span>
+            <span className="text-xs font-bold text-surface-400 uppercase tracking-wider whitespace-nowrap">
+              Jump to:
+            </span>
 
             {optimizedRoutes.length > 18 && (
               <input
@@ -147,12 +445,12 @@ export const DailySchedule: React.FC = () => {
                 <button
                   key={i}
                   onClick={() => scrollToDay(i)}
-                  className={`px-3 py-1.5 rounded-lg bg-white dark:bg-surface-700 border border-surface-200 dark:border-surface-600 font-bold text-surface-600 dark:text-surface-300 hover:border-primary-500 hover:text-primary-600 transition-all whitespace-nowrap flex flex-col items-center justify-center min-w-[60px] ${dateMode === 'fixed' ? 'text-[10px]' : 'text-xs'}`}
+                  className={`px-3 py-1.5 rounded-lg bg-white dark:bg-surface-700 border border-surface-200 dark:border-surface-600 font-bold text-surface-600 dark:text-surface-300 hover:border-primary-500 hover:text-primary-600 transition-all whitespace-nowrap flex flex-col items-center justify-center min-w-[60px] ${dateMode === "fixed" ? "text-[10px]" : "text-xs"}`}
                 >
-                  {dateMode === 'fixed' ? (
+                  {dateMode === "fixed" ? (
                     <>
                       <span className="opacity-50">D{i + 1}</span>
-                      <span>{format(btnDate, 'MMM d')}</span>
+                      <span>{format(btnDate, "MMM d")}</span>
                     </>
                   ) : (
                     <span>Day {i + 1}</span>
@@ -174,41 +472,47 @@ export const DailySchedule: React.FC = () => {
           const isLastDay = i === optimizedRoutes.length - 1;
 
           // Calculate base day start time in minutes
-          const [startH, startM] = dayStartTime.split(':').map(Number);
+          const [startH, startM] = dayStartTime.split(":").map(Number);
           let currentTime = startH * 60 + startM;
 
           // Calculate available time for this day
           let dayAvailableMinutes = baseDayMinutes;
           if (showFlights) {
             if (isFirstDay && arrivalFlight) {
-              const [arrH, arrM] = arrivalFlight.time.split(':').map(Number);
+              const [arrH, arrM] = arrivalFlight.time.split(":").map(Number);
               const arrivalTotal = arrH * 60 + arrM + arrivalFlight.buffer;
               const dayStartTotal = startH * 60 + startM;
               const effectiveStart = Math.max(dayStartTotal, arrivalTotal);
               currentTime = effectiveStart; // Day starts after flight + buffer
-              
-              let available = (endH * 60 + endM) - effectiveStart;
+
+              let available = endH * 60 + endM - effectiveStart;
               if (available < 0) available += 24 * 60;
               dayAvailableMinutes = available;
             }
             if (isLastDay && departureFlight) {
-              const [depH, depM] = departureFlight.time.split(':').map(Number);
+              const [depH, depM] = departureFlight.time.split(":").map(Number);
               const depTotal = depH * 60 + depM - departureFlight.buffer;
               const dayEndTotal = endH * 60 + endM;
               const effectiveEnd = Math.min(dayEndTotal, depTotal);
-              
+
               let available = effectiveEnd - (startH * 60 + startM);
               if (available < 0) available += 24 * 60;
               dayAvailableMinutes = available;
             }
           }
 
-          const visitMin = route.stops.reduce((acc, s) => acc + (s.estimatedDuration || 0), 0);
+          const visitMin = route.stops.reduce(
+            (acc, s) => acc + (s.estimatedDuration || 0),
+            0,
+          );
           const travelMin = Math.round(route.totalTime / 60);
           const totalDayMin = visitMin + travelMin;
           const remainingTime = Math.max(0, dayAvailableMinutes - totalDayMin);
           const isOverBudget = totalDayMin > dayAvailableMinutes;
-          const budgetPct = Math.min(100, Math.round((totalDayMin / dayAvailableMinutes) * 100));
+          const budgetPct = Math.min(
+            100,
+            Math.round((totalDayMin / dayAvailableMinutes) * 100),
+          );
 
           return (
             <div
@@ -220,10 +524,12 @@ export const DailySchedule: React.FC = () => {
                 <div className="p-4 border-b border-surface-100 dark:border-surface-700 bg-surface-50/50 dark:bg-surface-800/50">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex flex-col">
-                      <h3 className="text-lg font-bold text-surface-900 dark:text-white leading-tight">Day {i + 1}</h3>
-                      {dateMode === 'fixed' && (
+                      <h3 className="text-lg font-bold text-surface-900 dark:text-white leading-tight">
+                        Day {i + 1}
+                      </h3>
+                      {dateMode === "fixed" && (
                         <span className="text-[11px] font-bold text-primary-600 dark:text-primary-400 uppercase tracking-wider">
-                          {format(currentDate, 'MMM d (EEE)')}
+                          {format(currentDate, "MMM d (EEE)")}
                         </span>
                       )}
                     </div>
@@ -246,247 +552,224 @@ export const DailySchedule: React.FC = () => {
                         <Timer className="w-3 h-3 text-primary-500" />
                         <span className="text-surface-400">Visit:</span>
                         <span className="text-surface-600 dark:text-surface-300">
-                          {visitMin > 60 ? `${Math.floor(visitMin / 60)}h ${visitMin % 60}m` : `${visitMin}m`}
+                          {visitMin > 60
+                            ? `${Math.floor(visitMin / 60)}h ${visitMin % 60}m`
+                            : `${visitMin}m`}
                         </span>
                       </span>
                       <span className="flex items-center gap-1.5 bg-surface-100 dark:bg-surface-700/50 px-2 py-0.5 rounded-full">
                         <Clock className="w-3 h-3 text-primary-500" />
                         <span className="text-surface-400">Travel:</span>
                         <span className="text-surface-600 dark:text-surface-300">
-                          {travelMin > 60 ? `${Math.floor(travelMin / 60)}h ${travelMin % 60}m` : `${travelMin}m`}
+                          {travelMin > 60
+                            ? `${Math.floor(travelMin / 60)}h ${travelMin % 60}m`
+                            : `${travelMin}m`}
                         </span>
                       </span>
                     </div>
-                    <div className={`text-[10px] font-black px-1.5 py-0.5 rounded ${isOverBudget ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                      {isOverBudget ? 'OVER BUDGET' : (
-                        remainingTime >= 60
+                    <div
+                      className={`text-[10px] font-black px-1.5 py-0.5 rounded ${isOverBudget ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"}`}
+                    >
+                      {isOverBudget
+                        ? "OVER BUDGET"
+                        : remainingTime >= 60
                           ? `${Math.floor(remainingTime / 60)}h ${remainingTime % 60}m left`
-                          : `${remainingTime}m left`
-                      )}
+                          : `${remainingTime}m left`}
                     </div>
                   </div>
 
                   {/* Budget bar */}
                   <div className="w-full bg-surface-100 dark:bg-surface-700 rounded-full h-1 mt-3 overflow-hidden">
                     <div
-                      className={`h-full rounded-full transition-all ${isOverBudget ? 'bg-red-500' : 'bg-primary-500'}`}
+                      className={`h-full rounded-full transition-all ${isOverBudget ? "bg-red-500" : "bg-primary-500"}`}
                       style={{ width: `${budgetPct}%` }}
                     />
                   </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar p-4 space-y-0 relative">
-                  {showFlights && isFirstDay && arrivalFlight && (
-                    <div className="relative">
-                      {/* Line connector - only below */}
-                      <div className="absolute left-5 top-10 bottom-0 w-0.5 bg-surface-100 dark:bg-surface-700/50" />
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={(event) => {
+                      const { active, over } = event;
+                      if (over && active.id !== over.id) {
+                        reorderDayStops(
+                          i,
+                          active.id as string,
+                          over.id as string,
+                        );
+                      }
+                    }}
+                  >
+                    <SortableContext
+                      items={(() => {
+                        if (route.manualSequence) return route.manualSequence;
+                        const items = [];
+                        if (showFlights && isFirstDay && arrivalFlight)
+                          items.push("arrival");
+                        if (route.startHotel) items.push("start-hotel");
+                        route.stops.forEach((s) => items.push(s.id));
+                        if (route.endHotel) items.push("end-hotel");
+                        if (showFlights && isLastDay && departureFlight)
+                          items.push("departure");
+                        return items;
+                      })()}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      <div className="flex flex-col relative">
+                        {(() => {
+                          const items =
+                            route.manualSequence ||
+                            (() => {
+                              const ids = [];
+                              if (showFlights && isFirstDay && arrivalFlight)
+                                ids.push("arrival");
+                              if (route.startHotel) ids.push("start-hotel");
+                              route.stops.forEach((s) => ids.push(s.id));
+                              if (route.endHotel) ids.push("end-hotel");
+                              if (showFlights && isLastDay && departureFlight)
+                                ids.push("departure");
+                              return ids;
+                            })();
 
-                      <div className="flex items-start gap-4 relative z-10">
-                        <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 shadow-sm">
-                          <PlaneLanding className="w-5 h-5" />
-                        </div>
-                        <div className="flex-1 min-w-0 pt-0.5 pb-2">
-                          <div className="flex items-center justify-between">
-                            <h4 className="text-sm font-bold text-surface-900 dark:text-white">
-                              {arrivalFlight.location ? arrivalFlight.location.name : 'Flight Arrival'}
-                            </h4>
-                            <span className="text-[10px] font-bold font-mono text-surface-400">{formatTimeString(arrivalFlight.time)}</span>
-                          </div>
-                          <p className="text-[10px] text-surface-500 uppercase font-bold tracking-tight">
-                            {arrivalFlight.location ? 'Airport/Station Arrival' : 'At Destination'}
-                          </p>
-                        </div>
+                          return items.map((itemId, idx) => {
+                            const isFirst = idx === 0;
+                            const isLast = idx === items.length - 1;
+
+                            let element = null;
+                            let itemDuration = 0;
+
+                            if (itemId === "arrival" && arrivalFlight) {
+                              element = (
+                                <SortableAnchor
+                                  key="arrival"
+                                  id="arrival"
+                                  type="arrival"
+                                  name={
+                                    arrivalFlight.location
+                                      ? arrivalFlight.location.name
+                                      : "Flight Arrival"
+                                  }
+                                  time={arrivalFlight.time}
+                                  buffer={arrivalFlight.buffer}
+                                  isFirst={isFirst}
+                                  isLast={isLast}
+                                />
+                              );
+                              itemDuration = arrivalFlight.buffer;
+                            } else if (
+                              itemId === "departure" &&
+                              departureFlight
+                            ) {
+                              element = (
+                                <SortableAnchor
+                                  key="departure"
+                                  id="departure"
+                                  type="departure"
+                                  name={
+                                    departureFlight.location
+                                      ? departureFlight.location.name
+                                      : "Flight Departure"
+                                  }
+                                  time={departureFlight.time}
+                                  buffer={departureFlight.buffer}
+                                  isFirst={isFirst}
+                                  isLast={isLast}
+                                />
+                              );
+                              itemDuration = departureFlight.buffer;
+                            } else if (
+                              itemId === "start-hotel" &&
+                              route.startHotel
+                            ) {
+                              element = (
+                                <SortableAnchor
+                                  key="start-hotel"
+                                  id="start-hotel"
+                                  name={route.startHotel.name}
+                                  type="start-hotel"
+                                  calculatedTime={currentTime}
+                                  isFirst={isFirst}
+                                  isLast={isLast}
+                                />
+                              );
+                            } else if (
+                              itemId === "end-hotel" &&
+                              route.endHotel
+                            ) {
+                              element = (
+                                <SortableAnchor
+                                  key="end-hotel"
+                                  id="end-hotel"
+                                  name={route.endHotel.name}
+                                  type="end-hotel"
+                                  calculatedTime={currentTime}
+                                  isFirst={isFirst}
+                                  isLast={isLast}
+                                />
+                              );
+                            } else {
+                              const stop = route.stops.find(
+                                (s) => s.id === itemId,
+                              );
+                              if (stop) {
+                                element = (
+                                  <SortableStop
+                                    key={stop.id}
+                                    stop={stop}
+                                    stopIdx={idx}
+                                    stopArrivalTime={currentTime}
+                                    isFirst={isFirst}
+                                    isLast={isLast}
+                                    unassignPlace={unassignPlace}
+                                    leadingSegIdx={-1}
+                                    route={route}
+                                    dayIndex={i}
+                                    currentTime={currentTime}
+                                  />
+                                );
+                                itemDuration = stop.estimatedDuration || 0;
+                              }
+                            }
+
+                            if (!element) return null;
+
+                            currentTime += itemDuration;
+
+                            // After item, render segment if not last
+                            const segmentElement =
+                              idx < items.length - 1 &&
+                                idx < route.segments.length ? (
+                                <div
+                                  className="mt-[-4px]"
+                                  key={`seg-${itemId}`}
+                                >
+                                  <SegmentPill
+                                    segment={route.segments[idx]}
+                                    dayIndex={i}
+                                    segmentIndex={idx}
+                                  />
+                                  {(() => {
+                                    currentTime += Math.round(
+                                      route.segments[idx].time / 60,
+                                    );
+                                    return null;
+                                  })()}
+                                </div>
+                              ) : null;
+
+                            return (
+                              <React.Fragment key={`group-${itemId}`}>
+                                {element}
+                                {segmentElement}
+                              </React.Fragment>
+                            );
+                          });
+                        })()}
                       </div>
-                      <BufferPill minutes={arrivalFlight.buffer} />
-
-                      {/* Travel segment to hotel if location is set */}
-                      {arrivalFlight.location && route.segments.length > 0 && (
-                        <div className="mt-[-4px]">
-                          {(() => {
-                            const seg = route.segments[0];
-                            const travelTime = Math.round(seg.time / 60);
-                            const element = <SegmentPill
-                              segment={seg}
-                              dayIndex={i}
-                              segmentIndex={0}
-                            />;
-                            currentTime += travelTime;
-                            return element;
-                          })()}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {route.startHotel && (
-                    <div className="relative">
-                      {/* Line connector - only below */}
-                      {(route.stops.length > 0 || route.endHotel) && (
-                        <div className="absolute left-5 top-10 bottom-0 w-0.5 bg-surface-100 dark:bg-surface-700/50" />
-                      )}
-
-                      <div className="flex items-start gap-4 relative z-10 mb-4">
-                        <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900/50 text-primary-600 dark:text-primary-400 flex items-center justify-center shrink-0 shadow-sm">
-                          <Building2 className="w-5 h-5" />
-                        </div>
-                        <div className="flex-1 min-w-0 pt-0.5">
-                          <div className="flex items-center justify-between">
-                            <p className="text-sm font-bold text-surface-900 dark:text-white truncate">{route.startHotel.name}</p>
-                            <span className="text-[10px] font-bold font-mono text-surface-400">{formatTime(currentTime)}</span>
-                          </div>
-                          <p className="text-[10px] text-surface-500 uppercase font-bold tracking-tight">Start from Hotel</p>
-                        </div>
-                      </div>
-                      {route.segments && route.segments[0] && (
-                        <div className="mt-[-4px]">
-                          {(() => {
-                            const travelTime = Math.round(route.segments[0].time / 60);
-                            const element = <SegmentPill segment={route.segments[0]} dayIndex={i} segmentIndex={0} />;
-                            currentTime += travelTime;
-                            return element;
-                          })()}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {route.stops.map((stop, stopIdx) => {
-                    // Calculate the index for the segment leading TO this stop
-                    // Segment 0: Arrival -> Hotel (if both exist)
-                    // Segment 1: Hotel -> Stop 1 (if hotel exists) OR Arrival -> Stop 1 (if only arrival exists)
-                    let leadingSegIdx = stopIdx;
-                    if (isFirstDay && showFlights && arrivalFlight?.location) leadingSegIdx += 1;
-                    if (route.startHotel) leadingSegIdx += 1;
-
-                    const stopArrivalTime = currentTime;
-                    currentTime += (stop.estimatedDuration || 0);
-
-                    const isLastStop = stopIdx === route.stops.length - 1;
-                    const hasMore = !isLastStop || route.endHotel || (isLastDay && showFlights && departureFlight);
-
-                    return (
-                      <div key={stop.id} className="relative group">
-                        {/* Line connector - Top segment (from above) and Bottom segment (downwards) */}
-                        <div className="absolute left-5 top-0 h-0 w-0.5 bg-surface-100 dark:bg-surface-700/50" />
-                        {hasMore && (
-                          <div className="absolute left-5 top-10 bottom-0 w-0.5 bg-surface-100 dark:bg-surface-700/50" />
-                        )}
-
-                        <div className="flex gap-4 relative z-10">
-                          <div className="w-10 h-10 rounded-full bg-white dark:bg-surface-800 border-2 border-surface-100 dark:border-surface-700 flex items-center justify-center shrink-0 shadow-sm group-hover:border-primary-500 transition-colors">
-                            <span className="text-sm">
-                              {getCategoryEmoji(stop.category)}
-                            </span>
-                          </div>
-
-                          <div className="flex-1 min-w-0 pt-0.5 pb-4">
-                            <div className="flex items-center justify-between gap-2 relative">
-                              <h4 className="text-sm font-bold text-surface-900 dark:text-white truncate group-hover:text-primary-600 transition-colors pr-8">
-                                {stop.name}
-                              </h4>
-                              <span className="text-[10px] font-bold font-mono text-surface-400 shrink-0">
-                                {formatTime(stopArrivalTime)}
-                              </span>
-
-                              <button
-                                onClick={() => unassignPlace(stop.id)}
-                                className="absolute top-1/2 -translate-y-1/2 right-[-10px] opacity-0 group-hover:opacity-100 p-1.5 bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-600 text-surface-400 hover:text-red-500 hover:border-red-200 dark:hover:border-red-900/50 shadow-lg rounded-lg transition-all z-20"
-                                title="Remove from day"
-                              >
-                                <X className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-
-                            {stop.description && (
-                              <div className="mt-1">
-                                <ExpandableDescription text={stop.description} />
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {leadingSegIdx < route.segments.length && (
-                          <div className="mt-[-4px]">
-                            {(() => {
-                              const travelTime = Math.round(route.segments[leadingSegIdx].time / 60);
-                              const element = <SegmentPill
-                                segment={route.segments[leadingSegIdx]}
-                                dayIndex={i}
-                                segmentIndex={leadingSegIdx}
-                              />;
-                              currentTime += travelTime;
-                              return element;
-                            })()}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-
-                  {route.endHotel && (
-                    <div className="relative">
-                      {/* Line connector - only above */}
-                      <div className="absolute left-5 top-0 h-0 w-0.5 bg-surface-100 dark:bg-surface-700/50" />
-                      {isLastDay && showFlights && departureFlight && (
-                        <div className="absolute left-5 top-10 bottom-0 w-0.5 bg-surface-100 dark:bg-surface-700/50" />
-                      )}
-
-                      <div className="flex items-start gap-4 relative z-10 mt-2">
-                        <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900/50 text-primary-600 dark:text-primary-400 flex items-center justify-center shrink-0 shadow-sm">
-                          <Building2 className="w-5 h-5" />
-                        </div>
-                        <div className="flex-1 min-w-0 pt-0.5">
-                          <div className="flex items-center justify-between">
-                            <p className="text-sm font-bold text-surface-900 dark:text-white truncate">{route.endHotel.name}</p>
-                            <span className="text-[10px] font-bold font-mono text-surface-400">{formatTime(currentTime)}</span>
-                          </div>
-                          <p className="text-[10px] text-surface-500 uppercase font-bold tracking-tight">Return to Hotel</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {showFlights && isLastDay && departureFlight && (
-                    <div className="relative mt-2">
-                      <div className="absolute left-5 top-0 bottom-10 w-0.5 bg-surface-100 dark:bg-surface-700/50" />
-
-                      {/* Travel segment from hotel if location is set */}
-                      {departureFlight.location && route.segments.length > 0 && (
-                        <div className="mt-[-4px]">
-                          {(() => {
-                            const segIdx = route.segments.length - 1;
-                            const seg = route.segments[segIdx];
-                            const travelTime = Math.round(seg.time / 60);
-                            const element = <SegmentPill
-                              segment={seg}
-                              dayIndex={i}
-                              segmentIndex={segIdx}
-                            />;
-                            // Time is already updated by previous segments and hotels
-                            return element;
-                          })()}
-                        </div>
-                      )}
-
-                      <BufferPill minutes={departureFlight.buffer} />
-                      <div className="flex items-start gap-4 relative z-10">
-                        <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0 shadow-sm">
-                          <PlaneTakeoff className="w-5 h-5" />
-                        </div>
-                        <div className="flex-1 min-w-0 pt-0.5">
-                          <div className="flex items-center justify-between">
-                            <h4 className="text-sm font-bold text-surface-900 dark:text-white">
-                              {departureFlight.location ? departureFlight.location.name : 'Flight Departure'}
-                            </h4>
-                            <span className="text-[10px] font-bold font-mono text-surface-400">{formatTimeString(departureFlight.time)}</span>
-                          </div>
-                          <p className="text-[10px] text-surface-500 uppercase font-bold tracking-tight">
-                            {departureFlight.location ? 'Airport/Station Departure' : 'Heading Home'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                    </SortableContext>
+                  </DndContext>
                 </div>
               </div>
             </div>

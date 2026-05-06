@@ -13,11 +13,11 @@
   .btn-primary {
     @apply bg-primary-600 hover:bg-primary-700 disabled:bg-surface-300 dark:disabled:bg-surface-700 disabled:cursor-not-allowed text-white font-medium py-3 px-4 rounded-xl shadow-sm transition-all;
   }
-  
+
   .btn-secondary {
     @apply bg-surface-900 dark:bg-surface-700 hover:bg-surface-800 dark:hover:bg-surface-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm;
   }
-  
+
   .icon-btn {
     @apply p-2 text-surface-400 dark:text-surface-500 hover:text-surface-700 dark:hover:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-full transition-colors;
   }
@@ -34,7 +34,7 @@
   .card-place {
     @apply relative bg-white dark:bg-surface-800 border rounded-xl shadow-sm transition-all border-surface-200 dark:border-surface-700 hover:border-surface-300 dark:hover:border-surface-500 h-full;
   }
-  
+
   .schedule-container {
     @apply bg-white dark:bg-surface-800 flex flex-col shrink-0 print:bg-transparent;
   }
@@ -86,24 +86,29 @@
     size: auto;
     margin: 10mm;
   }
-  body, html, #root {
+  body,
+  html,
+  #root {
     height: auto !important;
     overflow: visible !important;
     background-color: white !important;
   }
-  
+
   /* Hide UI elements that shouldn't be printed */
-  header, button, .leaflet-container, .no-print {
+  header,
+  button,
+  .leaflet-container,
+  .no-print {
     display: none !important;
   }
-  
+
   /* Ensure main layout flows downwards */
   main {
     display: block !important;
     height: auto !important;
     overflow: visible !important;
   }
-  
+
   /* Make sure background colors print correctly */
   * {
     -webkit-print-color-adjust: exact !important;
