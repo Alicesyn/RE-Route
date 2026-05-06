@@ -66,19 +66,67 @@ const SegmentPill: React.FC<{
 
 export const DailySchedule: React.FC = () => {
   const { optimizedRoutes, optimizeDay, unassignPlace, dailyBudget } = useRouteStore();
+  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
   if (optimizedRoutes.length === 0) return null;
 
+  const scrollToDay = (dayIndex: number) => {
+    const element = document.getElementById(`schedule-day-${dayIndex}`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
+    }
+  };
+
   return (
     <div className="schedule-container">
-      <div className="px-6 py-3 border-b border-surface-100 dark:border-surface-700 flex items-center justify-between bg-surface-50 dark:bg-surface-800 shrink-0">
-        <h2 className="text-lg font-bold text-surface-900 dark:text-white">Optimized Schedule</h2>
-        <div className="text-sm text-surface-500 dark:text-surface-400 font-medium">
-          Total distance: {(optimizedRoutes.reduce((acc, r) => acc + r.totalDistance, 0) / 1000).toFixed(1)} km
+      <div className="px-6 py-3 border-b border-surface-100 dark:border-surface-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-50 dark:bg-surface-800 shrink-0">
+        <div className="flex items-center gap-4">
+          <h2 className="text-lg font-bold text-surface-900 dark:text-white">Optimized Schedule</h2>
+          <div className="text-sm text-surface-500 dark:text-surface-400 font-medium hidden md:block">
+            Total distance: {(optimizedRoutes.reduce((acc, r) => acc + r.totalDistance, 0) / 1000).toFixed(1)} km
+          </div>
+        </div>
+        
+        {/* Day Quick Navigation */}
+        <div className="flex items-center gap-3 overflow-hidden min-w-0 flex-1 sm:justify-end">
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-xs font-bold text-surface-400 uppercase tracking-wider whitespace-nowrap">Jump to:</span>
+            
+            {optimizedRoutes.length > 18 && (
+              <input 
+                type="number"
+                placeholder="Day #"
+                min={1}
+                max={optimizedRoutes.length}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value);
+                  if (!isNaN(val) && val >= 1 && val <= optimizedRoutes.length) {
+                    scrollToDay(val - 1);
+                  }
+                }}
+                className="w-16 px-2.5 py-1 text-xs font-bold bg-white dark:bg-surface-700 border border-primary-200 dark:border-primary-900 text-primary-700 dark:text-primary-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all placeholder:text-surface-400 shadow-sm"
+              />
+            )}
+          </div>
+
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth">
+            {optimizedRoutes.map((route, i) => (
+              <button
+                key={i}
+                onClick={() => scrollToDay(route.day)}
+                className="flex-none px-3 py-1 text-xs font-bold bg-white dark:bg-surface-700 text-surface-700 dark:text-surface-300 border border-surface-200 dark:border-surface-700 rounded-full hover:border-primary-500 hover:text-primary-600 transition-all shadow-sm"
+              >
+                D{route.day + 1}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className="p-6 flex gap-6 overflow-x-auto custom-scrollbar bg-surface-100 dark:bg-surface-900/50 print:flex-col print:overflow-visible print:bg-white print:p-0">
+      <div 
+        ref={scrollContainerRef}
+        className="px-6 pt-6 pb-8 flex gap-6 overflow-x-auto custom-scrollbar bg-surface-100 dark:bg-surface-900/50 print:flex-col print:overflow-visible print:bg-white print:p-0"
+      >
         {optimizedRoutes.map((route, i) => {
           const travelMin = Math.round((route.totalTime || 0) / 60);
           const visitMin = Math.round((route.totalVisitTime || 0) / 60);
@@ -87,7 +135,7 @@ export const DailySchedule: React.FC = () => {
           const isOverBudget = totalDayMin > dailyBudget;
           
           return (
-            <div key={i} className="schedule-day-card">
+            <div key={i} id={`schedule-day-${route.day}`} className="schedule-day-card">
               <div className="p-3 border-b border-surface-100 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 shrink-0">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="font-bold text-primary-700 dark:text-primary-400">Day {route.day + 1}</h3>
@@ -144,7 +192,7 @@ export const DailySchedule: React.FC = () => {
                     {/* Start Hotel */}
                     {route.startHotel && (
                       <div className="relative z-10">
-                        <div className="flex items-start gap-3 bg-white dark:bg-surface-800">
+                        <div className="flex items-start gap-3">
                           <div className="schedule-node-icon bg-primary-100 dark:bg-primary-900/50 text-primary-600 dark:text-primary-400">
                             <Building2 className="w-4 h-4" />
                           </div>
@@ -165,7 +213,7 @@ export const DailySchedule: React.FC = () => {
                       const segmentIdx = route.startHotel ? stopIdx + 1 : stopIdx;
                       return (
                         <div key={stopIdx} className="relative z-10 group/stop">
-                          <div className="flex items-start gap-3 bg-white dark:bg-surface-800">
+                          <div className="flex items-start gap-3">
                             <div className="schedule-node-icon bg-surface-900 dark:bg-surface-700 text-white text-xs font-bold">
                               {stopIdx + 1}
                             </div>
@@ -202,7 +250,7 @@ export const DailySchedule: React.FC = () => {
                     {/* End Hotel */}
                     {route.endHotel && (
                       <div className="relative z-10">
-                        <div className="flex items-start gap-3 bg-white dark:bg-surface-800">
+                        <div className="flex items-start gap-3">
                           <div className="schedule-node-icon bg-primary-100 dark:bg-primary-900/50 text-primary-600 dark:text-primary-400">
                             <Building2 className="w-4 h-4" />
                           </div>

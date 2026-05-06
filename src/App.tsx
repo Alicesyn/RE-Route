@@ -93,7 +93,7 @@ function App() {
         <div className="max-w-[1600px] mx-auto space-y-8 pb-12">
           {/* Top Row: Trip Settings & Map */}
           <div className="flex flex-col lg:flex-row gap-6 items-stretch">
-            <div className="w-full lg:w-1/3 flex flex-col bg-white dark:bg-surface-800 rounded-xl shadow-sm border border-surface-200 dark:border-surface-700">
+            <div className="w-full lg:w-1/3 flex flex-col bg-white dark:bg-surface-800 rounded-xl shadow-sm border border-surface-200 dark:border-surface-700 overflow-hidden">
               <div className="p-5 flex-1">
                 <TripSettings />
               </div>
@@ -156,7 +156,7 @@ function App() {
               {places.length > 6 && (
                 <button
                   onClick={() => setIsExpanded(!isExpanded)}
-                  className="w-full mt-4 flex items-center justify-center gap-1.5 text-sm font-semibold text-surface-500 hover:text-surface-800 bg-surface-100 hover:bg-surface-200 py-2.5 rounded-lg transition-colors"
+                  className="w-full mt-4 flex items-center justify-center gap-1.5 text-sm font-semibold text-surface-500 hover:text-surface-800 dark:text-surface-400 dark:hover:text-surface-200 bg-surface-100 hover:bg-surface-200 dark:bg-surface-700 dark:hover:bg-surface-600 py-2.5 rounded-lg transition-colors"
                 >
                   {isExpanded ? (
                     <><ChevronUp className="w-4 h-4" /> Collapse Grid</>

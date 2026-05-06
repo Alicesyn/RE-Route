@@ -47,7 +47,7 @@ export const TripSettings: React.FC = () => {
     const num = parseInt(val);
     if (!isNaN(num)) {
       // Constrain and update store, but keep raw value in input
-      const constrained = Math.max(1, Math.min(14, num));
+      const constrained = Math.max(1, Math.min(999, num));
       if (constrained !== days) {
         setDays(constrained);
       }
@@ -67,7 +67,7 @@ export const TripSettings: React.FC = () => {
   const budgetMins = dailyBudget % 60;
 
   return (
-    <div className="bg-white dark:bg-surface-800 rounded-xl border border-surface-200 dark:border-surface-700 p-5 shadow-sm space-y-6 overflow-visible transition-colors">
+    <div className="space-y-6 transition-colors">
       
       {/* Travel Mode */}
       <div>
@@ -103,7 +103,7 @@ export const TripSettings: React.FC = () => {
             <input 
               type="number" 
               min={1} 
-              max={14} 
+              max={999} 
               value={daysInput}
               onChange={handleDaysChange}
               onBlur={handleDaysBlur}

@@ -53,24 +53,31 @@
   }
 
   .itinerary-node-line {
-    @apply absolute left-4 top-4 bottom-4 w-px bg-surface-200 dark:bg-surface-700 z-0;
+    @apply absolute left-4 top-[18px] bottom-[18px] w-0.5 bg-surface-200 dark:bg-surface-700 z-0 -translate-x-px;
   }
 }
 
 @layer utilities {
   .custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 4px;
+    height: 4px;
   }
   .custom-scrollbar::-webkit-scrollbar-track {
     background: transparent;
   }
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 10px;
+    @apply bg-surface-300 dark:bg-surface-600 rounded-full;
   }
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
+    @apply bg-surface-400 dark:bg-surface-500;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }
 
