@@ -1,41 +1,56 @@
-import React, { useState } from 'react';
-import { Building2, Calendar, Car, Footprints, Train, Clock } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Calendar, Clock, Car, Train, Footprints, Building2, PlaneTakeoff, PlaneLanding, Plus, Minus } from 'lucide-react';
 import { useRouteStore } from '../../store/useRouteStore';
-import { MOCK_HOTELS } from '../../services/mockData';
 import { TravelMode } from '../../types';
+import { MOCK_HOTELS } from '../../services/mockData';
 import { HotelSearchInput } from './HotelSearchInput';
+import { format, addDays, parseISO } from 'date-fns';
 
 export const TripSettings: React.FC = () => {
   const { 
     days, setDays, 
-    travelMode, setTravelMode,
-    dailyBudget, setDailyBudget,
-    hotels, setHotelForDay, applyHotelToAllDays,
-    appMode
+    startDate, setStartDate,
+    endDate, setEndDate,
+    dateMode, setDateMode,
+    dayStartTime, dayEndTime, setDayTimes,
+    showFlights, setShowFlights,
+    arrivalFlight, setArrivalFlight,
+    departureFlight, setDepartureFlight,
+    travelMode, setTravelMode, 
+    hotels, setHotelForDay, applyHotelToAllDays, 
+    appMode 
   } = useRouteStore();
 
-  const [sameHotel, setSameHotel] = useState(true);
   const [daysInput, setDaysInput] = useState(days.toString());
+  const [sameHotel, setSameHotel] = useState(true);
 
-  // Synchronize local input with store days if store changes externally
-  React.useEffect(() => {
-    if (parseInt(daysInput) !== days) {
-      setDaysInput(days.toString());
-    }
+  // Sync internal input state with store days
+  useEffect(() => {
+    setDaysInput(days.toString());
   }, [days]);
 
-  // Helper to handle hotel assignment
+  const handleDaysChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setDaysInput(e.target.value);
+  };
+
+  const handleDaysBlur = () => {
+    const val = parseInt(daysInput);
+    if (!isNaN(val) && val >= 1 && val <= 999) {
+      setDays(val);
+    } else {
+      setDaysInput(days.toString());
+    }
+  };
+
   const handleHotelChange = (dayIndex: number, hotelData: any) => {
     let hotel;
 
     if (appMode !== 'real') {
-      // Mock mode handles index as ID
       const mockHotel = typeof hotelData === 'string' ? MOCK_HOTELS[parseInt(hotelData)] : hotelData;
       if (mockHotel) {
         hotel = { ...mockHotel, dayIndex };
       }
     } else {
-      // Real mode handles whole object
       hotel = {
         name: hotelData.name,
         address: hotelData.address,
@@ -54,40 +69,20 @@ export const TripSettings: React.FC = () => {
     }
   };
 
-  const handleDaysChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setDaysInput(val);
-    
-    const num = parseInt(val);
-    if (!isNaN(num)) {
-      // Constrain and update store, but keep raw value in input
-      const constrained = Math.max(1, Math.min(999, num));
-      if (constrained !== days) {
-        setDays(constrained);
-      }
-    }
-  };
-
-  const handleDaysBlur = () => {
-    // On blur, ensure input matches store exactly (handles empty case)
-    setDaysInput(days.toString());
-  };
-
   const currentHotel = hotels.find(h => h.dayIndex === 0);
   const currentHotelName = currentHotel ? currentHotel.name : '';
   const currentHotelMockIndex = currentHotel 
     ? MOCK_HOTELS.findIndex(h => h.name === currentHotel.name)
     : '';
 
-  const budgetHours = Math.floor(dailyBudget / 60);
-  const budgetMins = dailyBudget % 60;
+  const displayEndDate = format(parseISO(endDate), 'MMM d, yyyy');
 
   return (
     <div className="space-y-6 transition-colors">
       
       {/* Travel Mode */}
       <div>
-        <h3 className="text-sm font-semibold text-surface-900 dark:text-white uppercase tracking-wider mb-3">Travel Mode</h3>
+        <h3 className="text-sm font-semibold text-surface-900 dark:text-white uppercase tracking-wider mb-3">Global Travel Mode</h3>
         <div className="flex flex-wrap bg-surface-100 dark:bg-surface-900/50 p-1 rounded-lg gap-1">
           {(['walking', 'transit', 'driving'] as TravelMode[]).map((mode) => (
             <button
@@ -110,64 +105,214 @@ export const TripSettings: React.FC = () => {
 
       <hr className="border-surface-100 dark:border-surface-700" />
 
-      {/* Itinerary Settings */}
+      {/* Date Options */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-surface-900 dark:text-white uppercase tracking-wider">Schedule & Stays</h3>
-          <div className="flex items-center gap-2 text-sm text-surface-600 dark:text-surface-300 bg-surface-50 dark:bg-surface-900 px-2 py-1 rounded-md border border-surface-200 dark:border-surface-700">
-            <Calendar className="w-4 h-4" />
+          <h3 className="text-sm font-semibold text-surface-900 dark:text-white uppercase tracking-wider">Dates & Duration</h3>
+          <div className="flex bg-surface-100 dark:bg-surface-900/50 p-0.5 rounded-md">
+            <button 
+              onClick={() => setDateMode('duration')}
+              className={`px-2 py-1 text-[10px] font-bold uppercase rounded transition-all ${dateMode === 'duration' ? 'bg-white dark:bg-surface-700 text-primary-600 shadow-sm' : 'text-surface-500 hover:text-surface-700'}`}
+            >
+              Duration
+            </button>
+            <button 
+              onClick={() => setDateMode('fixed')}
+              className={`px-2 py-1 text-[10px] font-bold uppercase rounded transition-all ${dateMode === 'fixed' ? 'bg-white dark:bg-surface-700 text-primary-600 shadow-sm' : 'text-surface-500 hover:text-surface-700'}`}
+            >
+              Exact Dates
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4">
+          {dateMode === 'duration' ? (
+            <div>
+              <label className="block text-xs font-bold text-surface-500 uppercase mb-2">Trip Duration</label>
+              <div 
+                className="flex items-center justify-between text-sm text-surface-900 dark:text-white bg-white dark:bg-surface-800 px-3 py-2.5 rounded-xl border border-surface-200 dark:border-surface-700 shadow-sm focus-within:ring-2 focus-within:ring-primary-500/20 focus-within:border-primary-500 transition-all cursor-pointer group"
+                onClick={(e) => {
+                  const input = e.currentTarget.querySelector('input');
+                  if (input) input.focus();
+                }}
+              >
+                <div className="flex items-center gap-3">
+                  <input 
+                    type="number" 
+                    min={1} 
+                    max={999} 
+                    value={daysInput}
+                    onChange={handleDaysChange}
+                    onBlur={handleDaysBlur}
+                    className="w-12 bg-transparent font-bold focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                  <span className="text-surface-500 font-bold uppercase text-[10px] tracking-widest border-l border-surface-100 dark:border-surface-700 pl-3">Total Days</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setDays(Math.max(1, days - 1)); setDaysInput(String(Math.max(1, days - 1))); }}
+                    className="p-1 rounded hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-400 hover:text-primary-600 transition-colors"
+                  >
+                    <Minus className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setDays(days + 1); setDaysInput(String(days + 1)); }}
+                    className="p-1 rounded hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-400 hover:text-primary-600 transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-surface-500 uppercase mb-2">Start Date</label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
+                  <input 
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-full bg-surface-50 dark:bg-surface-900 border border-surface-200 dark:border-surface-700 text-surface-900 dark:text-white text-sm rounded-lg pl-10 p-2.5 outline-none"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-surface-500 uppercase mb-2">End Date</label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
+                  <input 
+                    type="date"
+                    value={endDate}
+                    min={startDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="w-full bg-surface-50 dark:bg-surface-900 border border-surface-200 dark:border-surface-700 text-surface-900 dark:text-white text-sm rounded-lg pl-10 p-2.5 outline-none"
+                  />
+                </div>
+                <p className="mt-2 text-[10px] font-bold text-surface-400 uppercase text-right">
+                  Total: <span className="text-primary-600">{days} days</span>
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <hr className="border-surface-100 dark:border-surface-700" />
+
+      {/* Daily Routine */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-surface-900 dark:text-white uppercase tracking-wider">Daily Routine</h3>
+          <p className="text-[10px] text-surface-400 font-medium italic">Local time</p>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="relative">
+            <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
             <input 
-              type="number" 
-              min={1} 
-              max={999} 
-              value={daysInput}
-              onChange={handleDaysChange}
-              onBlur={handleDaysBlur}
-              className="w-12 bg-transparent text-center font-medium focus:outline-none"
+              type="time"
+              value={dayStartTime}
+              onChange={(e) => setDayTimes(e.target.value, dayEndTime)}
+              className="w-full bg-surface-50 dark:bg-surface-900 border border-surface-200 dark:border-surface-700 text-surface-900 dark:text-white text-sm rounded-lg pl-10 p-2.5 outline-none"
             />
-            <span>Days</span>
+          </div>
+          <div className="relative">
+            <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
+            <input 
+              type="time"
+              value={dayEndTime}
+              onChange={(e) => setDayTimes(dayStartTime, e.target.value)}
+              className="w-full bg-surface-50 dark:bg-surface-900 border border-surface-200 dark:border-surface-700 text-surface-900 dark:text-white text-sm rounded-lg pl-10 p-2.5 outline-none"
+            />
           </div>
         </div>
+      </div>
 
-        {/* Daily Time Budget */}
-        <div className="mb-4">
-          <div className="flex items-center justify-between mb-2">
-            <label className="flex items-center gap-1.5 text-sm text-surface-700 dark:text-surface-300 font-medium">
-              <Clock className="w-4 h-4 text-surface-400 dark:text-surface-500" />
-              Daily Time Budget
-            </label>
-            <span className="text-sm font-semibold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 px-2 py-0.5 rounded-md">
-              {budgetHours}h{budgetMins > 0 ? ` ${budgetMins}m` : ''}
-            </span>
-          </div>
-          <input
-            type="range"
-            min={360}
-            max={960}
-            step={30}
-            value={dailyBudget}
-            onChange={(e) => setDailyBudget(parseInt(e.target.value))}
-            className="w-full h-2 bg-surface-200 dark:bg-surface-700 rounded-lg appearance-none cursor-pointer accent-primary-600"
-          />
-          <div className="flex justify-between text-[10px] text-surface-400 mt-1">
-            <span>6h</span>
-            <span>9h</span>
-            <span>12h</span>
-            <span>16h</span>
-          </div>
+      <hr className="border-surface-100 dark:border-surface-700" />
+
+      {/* Flight & Arrival */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-surface-900 dark:text-white uppercase tracking-wider">Flight & Travel</h3>
+          <label className="flex items-center gap-2 cursor-pointer group">
+            <input 
+              type="checkbox" 
+              checked={showFlights}
+              onChange={(e) => setShowFlights(e.target.checked)}
+              className="rounded border-surface-300 text-primary-600 focus:ring-primary-500"
+            />
+            <span className="text-[10px] font-bold text-surface-500 uppercase">Enable flight tracking</span>
+          </label>
         </div>
 
-        <div className="space-y-4">
-          <label className="flex items-center gap-2 text-sm text-surface-700 dark:text-surface-300 cursor-pointer">
+        {showFlights && (
+          <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="bg-surface-50 dark:bg-surface-900/50 p-4 rounded-xl border border-surface-200 dark:border-surface-700">
+              <div className="flex items-center gap-2 mb-3 text-emerald-600 dark:text-emerald-400">
+                <PlaneLanding className="w-4 h-4" />
+                <span className="text-xs font-bold uppercase tracking-wide">Arrival (Day 1)</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <input 
+                  type="time"
+                  value={arrivalFlight?.time || ''}
+                  onChange={(e) => setArrivalFlight({ time: e.target.value, buffer: arrivalFlight?.buffer || 120 })}
+                  className="w-full bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 text-surface-900 dark:text-white text-xs rounded-lg p-2 outline-none"
+                />
+                <input 
+                  type="number"
+                  placeholder="Buffer (mins)"
+                  value={arrivalFlight?.buffer || ''}
+                  onChange={(e) => setArrivalFlight({ time: arrivalFlight?.time || '12:00', buffer: parseInt(e.target.value) || 0 })}
+                  className="w-full bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 text-surface-900 dark:text-white text-xs rounded-lg p-2 outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="bg-surface-50 dark:bg-surface-900/50 p-4 rounded-xl border border-surface-200 dark:border-surface-700">
+              <div className="flex items-center gap-2 mb-3 text-red-600 dark:text-red-400">
+                <PlaneTakeoff className="w-4 h-4" />
+                <span className="text-xs font-bold uppercase tracking-wide">Departure (Day {days})</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <input 
+                  type="time"
+                  value={departureFlight?.time || ''}
+                  onChange={(e) => setDepartureFlight({ time: e.target.value, buffer: departureFlight?.buffer || 120 })}
+                  className="w-full bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 text-surface-900 dark:text-white text-xs rounded-lg p-2 outline-none"
+                />
+                <input 
+                  type="number"
+                  placeholder="Buffer (mins)"
+                  value={departureFlight?.buffer || ''}
+                  onChange={(e) => setDepartureFlight({ time: departureFlight?.time || '12:00', buffer: parseInt(e.target.value) || 0 })}
+                  className="w-full bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 text-surface-900 dark:text-white text-xs rounded-lg p-2 outline-none"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <hr className="border-surface-100 dark:border-surface-700" />
+
+      {/* Lodging */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-surface-900 dark:text-white uppercase tracking-wider">Stay & Lodging</h3>
+          <label className="flex items-center gap-2 cursor-pointer group">
             <input 
               type="checkbox" 
               checked={sameHotel}
               onChange={(e) => setSameHotel(e.target.checked)}
               className="rounded border-surface-300 text-primary-600 focus:ring-primary-500"
             />
-            Same hotel for all days
+            <span className="text-[10px] font-bold text-surface-500 uppercase">Same hotel every day</span>
           </label>
+        </div>
 
+        <div className="space-y-4">
           {sameHotel ? (
             <div className="relative flex items-center">
               {appMode === 'dropdown-mock' ? (
@@ -193,41 +338,19 @@ export const TripSettings: React.FC = () => {
               )}
             </div>
           ) : (
-            <div className="space-y-3 pb-2">
-              {Array.from({ length: days }).map((_, i) => {
-                const dayHotelIndex = hotels.find(h => h.dayIndex === i)
-                  ? MOCK_HOTELS.findIndex(h => h.name === hotels.find(h => h.dayIndex === i)?.name)
-                  : '';
-                  
-                return (
-                  <div key={i} className="flex items-center gap-3">
-                    <span className="text-xs font-semibold text-surface-500 dark:text-surface-400 w-12 shrink-0">Day {i + 1}</span>
-                    <div className="relative flex-1">
-                      {appMode === 'dropdown-mock' ? (
-                        <>
-                          <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400 dark:text-surface-500" />
-                          <select
-                            value={dayHotelIndex}
-                            onChange={(e) => handleHotelChange(i, e.target.value)}
-                            className="w-full bg-surface-50 dark:bg-surface-900 border border-surface-200 dark:border-surface-700 text-surface-900 dark:text-white text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block pl-10 p-2 appearance-none"
-                          >
-                            <option value="" disabled>Select hotel...</option>
-                            {MOCK_HOTELS.map((h, idx) => (
-                              <option key={idx} value={idx}>{h.name}</option>
-                            ))}
-                          </select>
-                        </>
-                      ) : (
-                        <HotelSearchInput 
-                          onSelect={(id) => handleHotelChange(i, id)} 
-                          placeholder="Search for hotel..." 
-                          currentValue={dayHotelIndex !== '' ? MOCK_HOTELS[dayHotelIndex as number].name : ''}
-                        />
-                      )}
-                    </div>
+            <div className="space-y-3">
+              {Array.from({ length: days }).map((_, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <span className="text-[10px] font-bold text-surface-400 w-10 shrink-0 uppercase">Day {i + 1}</span>
+                  <div className="flex-1">
+                    <HotelSearchInput 
+                      onSelect={(h) => handleHotelChange(i, h)} 
+                      placeholder={`Hotel for Day ${i + 1}`} 
+                      currentValue={hotels.find(h => h.dayIndex === i)?.name || ''}
+                    />
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
           )}
         </div>

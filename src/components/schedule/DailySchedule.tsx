@@ -1,8 +1,28 @@
 import React, { useState } from 'react';
 import { useRouteStore } from '../../store/useRouteStore';
-import { Clock, Building2, Wand2, X, Timer, Car, Footprints, Train, ChevronDown } from 'lucide-react';
+import { Clock, Building2, Wand2, X, Timer, Car, Footprints, Train, ChevronDown, PlaneTakeoff, PlaneLanding } from 'lucide-react';
 import { TravelMode, RouteSegment } from '../../types';
 import { getCategoryEmoji } from '../../utils/categoryUtils';
+import { format, addDays, parseISO } from 'date-fns';
+
+const formatTime = (totalMinutes: number) => {
+  const hours = Math.floor(totalMinutes / 60) % 24;
+  const mins = Math.floor(totalMinutes % 60);
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const displayHours = hours % 12 || 12;
+  return `${displayHours}:${mins.toString().padStart(2, '0')} ${period}`;
+};
+
+const BufferPill: React.FC<{ minutes: number }> = ({ minutes }) => {
+  return (
+    <div className="pt-0 pb-3 pl-12 relative group">
+      <div className="travel-pill inline-flex items-center gap-1.5 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 px-2 py-1 rounded-full text-[10px] font-bold text-surface-400 uppercase tracking-tight">
+        <Clock className="w-3 h-3" />
+        <span>{minutes} min buffer</span>
+      </div>
+    </div>
+  );
+};
 
 const ExpandableDescription: React.FC<{ text: string }> = ({ text }) => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -65,10 +85,19 @@ const SegmentPill: React.FC<{
 };
 
 export const DailySchedule: React.FC = () => {
-  const { optimizedRoutes, optimizeDay, unassignPlace, dailyBudget } = useRouteStore();
+  const { 
+    optimizedRoutes, optimizeDay, unassignPlace, 
+    startDate, dateMode, dayStartTime, dayEndTime,
+    showFlights, arrivalFlight, departureFlight
+  } = useRouteStore();
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
   if (optimizedRoutes.length === 0) return null;
+
+  // Calculate day total in minutes
+  const [startH, startM] = dayStartTime.split(':').map(Number);
+  const [endH, endM] = dayEndTime.split(':').map(Number);
+  const baseDayMinutes = (endH * 60 + endM) - (startH * 60 + startM);
 
   const scrollToDay = (dayIndex: number) => {
     const element = document.getElementById(`schedule-day-${dayIndex}`);
@@ -82,9 +111,6 @@ export const DailySchedule: React.FC = () => {
       <div className="px-6 py-3 border-b border-surface-100 dark:border-surface-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-50 dark:bg-surface-800 shrink-0">
         <div className="flex items-center gap-4">
           <h2 className="text-lg font-bold text-surface-900 dark:text-white">Optimized Schedule</h2>
-          <div className="text-sm text-surface-500 dark:text-surface-400 font-medium hidden md:block">
-            Total distance: {(optimizedRoutes.reduce((acc, r) => acc + r.totalDistance, 0) / 1000).toFixed(1)} km
-          </div>
         </div>
         
         {/* Day Quick Navigation */}
@@ -100,168 +126,298 @@ export const DailySchedule: React.FC = () => {
                 max={optimizedRoutes.length}
                 onChange={(e) => {
                   const val = parseInt(e.target.value);
-                  if (!isNaN(val) && val >= 1 && val <= optimizedRoutes.length) {
-                    scrollToDay(val - 1);
-                  }
+                  if (!isNaN(val)) scrollToDay(val - 1);
                 }}
-                className="w-16 px-2.5 py-1 text-xs font-bold bg-white dark:bg-surface-700 border border-primary-200 dark:border-primary-900 text-primary-700 dark:text-primary-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all placeholder:text-surface-400 shadow-sm"
+                className="w-20 bg-white dark:bg-surface-700 border border-surface-200 dark:border-surface-600 rounded-md px-2 py-0.5 text-xs font-bold text-primary-600 outline-none focus:ring-1 focus:ring-primary-500 text-center"
               />
             )}
           </div>
 
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth">
-            {optimizedRoutes.map((route, i) => (
-              <button
-                key={i}
-                onClick={() => scrollToDay(route.day)}
-                className="flex-none px-3 py-1 text-xs font-bold bg-white dark:bg-surface-700 text-surface-700 dark:text-surface-300 border border-surface-200 dark:border-surface-700 rounded-full hover:border-primary-500 hover:text-primary-600 transition-all shadow-sm"
-              >
-                D{route.day + 1}
-              </button>
-            ))}
+          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+            {optimizedRoutes.map((route, i) => {
+              const btnDate = addDays(parseISO(startDate), i);
+              return (
+                <button
+                  key={i}
+                  onClick={() => scrollToDay(i)}
+                  className={`px-3 py-1.5 rounded-lg bg-white dark:bg-surface-700 border border-surface-200 dark:border-surface-600 font-bold text-surface-600 dark:text-surface-300 hover:border-primary-500 hover:text-primary-600 transition-all whitespace-nowrap flex flex-col items-center justify-center min-w-[60px] ${dateMode === 'fixed' ? 'text-[10px]' : 'text-xs'}`}
+                >
+                  {dateMode === 'fixed' ? (
+                    <>
+                      <span className="opacity-50">D{i + 1}</span>
+                      <span>{format(btnDate, 'MMM d')}</span>
+                    </>
+                  ) : (
+                    <span>Day {i + 1}</span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
 
       <div 
         ref={scrollContainerRef}
-        className="px-6 pt-6 pb-8 flex gap-6 overflow-x-auto custom-scrollbar bg-surface-100 dark:bg-surface-900/50 print:flex-col print:overflow-visible print:bg-white print:p-0"
+        className="p-6 overflow-x-auto overflow-y-hidden custom-scrollbar flex gap-6 snap-x snap-mandatory"
       >
         {optimizedRoutes.map((route, i) => {
-          const travelMin = Math.round((route.totalTime || 0) / 60);
-          const visitMin = Math.round((route.totalVisitTime || 0) / 60);
-          const totalDayMin = travelMin + visitMin;
-          const budgetPct = Math.min(100, Math.round((totalDayMin / dailyBudget) * 100));
-          const isOverBudget = totalDayMin > dailyBudget;
-          
+          const currentDate = addDays(parseISO(startDate), i);
+          const isFirstDay = i === 0;
+          const isLastDay = i === optimizedRoutes.length - 1;
+
+          // Calculate base day start time in minutes
+          const [startH, startM] = dayStartTime.split(':').map(Number);
+          let currentTime = startH * 60 + startM;
+
+          // Calculate available time for this day
+          let dayAvailableMinutes = baseDayMinutes;
+          if (showFlights) {
+            if (isFirstDay && arrivalFlight) {
+              const [arrH, arrM] = arrivalFlight.time.split(':').map(Number);
+              const arrivalTotal = arrH * 60 + arrM + arrivalFlight.buffer;
+              const dayStartTotal = startH * 60 + startM;
+              const effectiveStart = Math.max(dayStartTotal, arrivalTotal);
+              currentTime = effectiveStart; // Day starts after flight + buffer
+              dayAvailableMinutes = (endH * 60 + endM) - effectiveStart;
+            }
+            if (isLastDay && departureFlight) {
+              const [depH, depM] = departureFlight.time.split(':').map(Number);
+              const depTotal = depH * 60 + depM - departureFlight.buffer;
+              const dayEndTotal = endH * 60 + endM;
+              const effectiveEnd = Math.min(dayEndTotal, depTotal);
+              dayAvailableMinutes = effectiveEnd - (startH * 60 + startM);
+            }
+          }
+
+          const visitMin = route.stops.reduce((acc, s) => acc + (s.estimatedDuration || 0), 0);
+          const travelMin = Math.round(route.totalTime / 60);
+          const totalDayMin = visitMin + travelMin;
+          const remainingTime = Math.max(0, dayAvailableMinutes - totalDayMin);
+          const isOverBudget = totalDayMin > dayAvailableMinutes;
+          const budgetPct = Math.min(100, Math.round((totalDayMin / dayAvailableMinutes) * 100));
+
           return (
-            <div key={i} id={`schedule-day-${route.day}`} className="schedule-day-card">
-              <div className="p-3 border-b border-surface-100 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 shrink-0">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-bold text-primary-700 dark:text-primary-400">Day {route.day + 1}</h3>
-                  <div className="flex items-center gap-2">
-                    {route.stops.length > 1 && (
-                      <button
-                        onClick={() => optimizeDay(route.day)}
-                        className="flex items-center gap-1 text-xs font-semibold text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 bg-primary-50 dark:bg-primary-900/30 hover:bg-primary-100 dark:hover:bg-primary-900/50 px-2 py-1 rounded-md transition-all"
-                        title={`Optimize Day ${route.day + 1} only`}
-                      >
-                        <Wand2 className="w-3 h-3" />
-                        Optimize
-                      </button>
-                    )}
+            <div 
+              key={i} 
+              id={`schedule-day-${i}`}
+              className="flex-shrink-0 w-80 md:w-96 snap-start"
+            >
+              <div className="bg-white dark:bg-surface-800 rounded-2xl border border-surface-100 dark:border-surface-700 shadow-xl overflow-hidden flex flex-col h-full max-h-[600px]">
+                <div className="p-4 border-b border-surface-100 dark:border-surface-700 bg-surface-50/50 dark:bg-surface-800/50">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex flex-col">
+                      <h3 className="text-lg font-bold text-surface-900 dark:text-white leading-tight">Day {i + 1}</h3>
+                      {dateMode === 'fixed' && (
+                        <span className="text-[11px] font-bold text-primary-600 dark:text-primary-400 uppercase tracking-wider">
+                          {format(currentDate, 'MMM d (EEE)')}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {route.stops.length > 1 && (
+                        <button
+                          onClick={() => optimizeDay(i)}
+                          className="p-1.5 rounded-lg bg-white dark:bg-surface-700 border border-surface-200 dark:border-surface-600 text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-all"
+                          title="Optimize this day"
+                        >
+                          <Wand2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
-                
-                {/* Time breakdown */}
-                <div className="flex items-center gap-3 text-[11px] font-semibold text-surface-500 dark:text-surface-400 mb-2">
-                  <span className="flex items-center gap-1">
-                    <Timer className="w-3 h-3" />
-                    {visitMin > 60 ? `${Math.floor(visitMin / 60)}h ${visitMin % 60}m` : `${visitMin}m`} visit
-                  </span>
-                  <span className="text-surface-300 dark:text-surface-600">+</span>
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    {travelMin}m travel
-                  </span>
-                </div>
-                
-                {/* Budget progress bar */}
-                {route.stops.length > 0 && (
-                  <div className="w-full bg-surface-200 dark:bg-surface-700 rounded-full h-1.5 overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all ${
-                        isOverBudget 
-                          ? 'bg-red-400' 
-                          : budgetPct > 80 
-                            ? 'bg-amber-400' 
-                            : 'bg-emerald-400'
-                      }`}
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3 text-[10px] font-bold text-surface-500 uppercase tracking-tight">
+                      <span className="flex items-center gap-1">
+                        <Timer className="w-3 h-3" />
+                        {visitMin > 60 ? `${Math.floor(visitMin / 60)}h ${visitMin % 60}m` : `${visitMin}m`}
+                      </span>
+                      <span>+</span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {travelMin}m
+                      </span>
+                    </div>
+                    <div className={`text-[10px] font-black px-1.5 py-0.5 rounded ${isOverBudget ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                      {isOverBudget ? 'OVER BUDGET' : (
+                        remainingTime >= 60 
+                          ? `${Math.floor(remainingTime / 60)}h ${remainingTime % 60}m left`
+                          : `${remainingTime}m left`
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Budget bar */}
+                  <div className="w-full bg-surface-100 dark:bg-surface-700 rounded-full h-1 mt-3 overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full transition-all ${isOverBudget ? 'bg-red-500' : 'bg-primary-500'}`}
                       style={{ width: `${budgetPct}%` }}
                     />
                   </div>
-                )}
-              </div>
+                </div>
 
-              <div className="p-4 flex-1">
-                <div className="relative">
-                  {/* Vertical line connecting nodes */}
-                  <div className="itinerary-node-line"></div>
-
-                  <div className="space-y-0">
-                    {/* Start Hotel */}
-                    {route.startHotel && (
-                      <div className="relative z-10">
-                        <div className="flex items-start gap-3">
-                          <div className="schedule-node-icon bg-primary-100 dark:bg-primary-900/50 text-primary-600 dark:text-primary-400">
-                            <Building2 className="w-4 h-4" />
+                <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar p-4 space-y-0 relative">
+                  {showFlights && isFirstDay && arrivalFlight && (
+                    <div className="relative">
+                      {/* Line connector - only below */}
+                      <div className="absolute left-5 top-10 bottom-0 w-0.5 bg-surface-100 dark:bg-surface-700/50" />
+                      
+                      <div className="flex items-start gap-4 relative z-10">
+                        <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 shadow-sm">
+                          <PlaneLanding className="w-5 h-5" />
+                        </div>
+                        <div className="flex-1 min-w-0 pt-0.5 pb-2">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-bold text-surface-900 dark:text-white">Flight Arrival</h4>
+                            <span className="text-[10px] font-bold font-mono text-surface-400">{arrivalFlight.time}</span>
                           </div>
-                          <div className="flex-1 pb-1">
-                            <p className="text-sm font-semibold text-surface-900 dark:text-white">{route.startHotel.name}</p>
-                            <p className="text-xs text-surface-500 dark:text-surface-400">Start of day</p>
+                          <p className="text-[10px] text-surface-500 uppercase font-bold tracking-tight">At Destination</p>
+                        </div>
+                      </div>
+                      <BufferPill minutes={arrivalFlight.buffer} />
+                    </div>
+                  )}
+
+                  {route.startHotel && (
+                    <div className="relative">
+                      {/* Line connector - only below */}
+                      {(route.stops.length > 0 || route.endHotel) && (
+                        <div className="absolute left-5 top-10 bottom-0 w-0.5 bg-surface-100 dark:bg-surface-700/50" />
+                      )}
+                      
+                      <div className="flex items-start gap-4 relative z-10 mb-4">
+                        <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900/50 text-primary-600 dark:text-primary-400 flex items-center justify-center shrink-0 shadow-sm">
+                          <Building2 className="w-5 h-5" />
+                        </div>
+                        <div className="flex-1 min-w-0 pt-0.5">
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm font-bold text-surface-900 dark:text-white truncate">{route.startHotel.name}</p>
+                            <span className="text-[10px] font-bold font-mono text-surface-400">{formatTime(currentTime)}</span>
+                          </div>
+                          <p className="text-[10px] text-surface-500 uppercase font-bold tracking-tight">Start from Hotel</p>
+                        </div>
+                      </div>
+                      {route.segments && route.segments[0] && (
+                        <div className="mt-[-4px]">
+                          {(() => {
+                            const travelTime = Math.round(route.segments[0].time / 60);
+                            const element = <SegmentPill segment={route.segments[0]} dayIndex={i} segmentIndex={0} />;
+                            currentTime += travelTime;
+                            return element;
+                          })()}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {route.stops.map((stop, stopIdx) => {
+                    const segmentIdx = route.startHotel ? stopIdx + 1 : stopIdx;
+                    const stopArrivalTime = currentTime;
+                    currentTime += (stop.estimatedDuration || 0);
+                    const isLastStop = stopIdx === route.stops.length - 1;
+                    const hasMore = !isLastStop || route.endHotel || (isLastDay && showFlights && departureFlight);
+
+                    return (
+                      <div key={stop.id} className="relative group">
+                        {/* Line connector - Top segment (from above) and Bottom segment (downwards) */}
+                        <div className="absolute left-5 top-0 h-0 w-0.5 bg-surface-100 dark:bg-surface-700/50" />
+                        {hasMore && (
+                          <div className="absolute left-5 top-10 bottom-0 w-0.5 bg-surface-100 dark:bg-surface-700/50" />
+                        )}
+                        
+                        <div className="flex gap-4 relative z-10">
+                          <div className="w-10 h-10 rounded-full bg-white dark:bg-surface-800 border-2 border-surface-100 dark:border-surface-700 flex items-center justify-center shrink-0 shadow-sm group-hover:border-primary-500 transition-colors">
+                            <span className="text-sm">
+                              {getCategoryEmoji(stop.category)}
+                            </span>
+                          </div>
+                          
+                          <div className="flex-1 min-w-0 pt-0.5 pb-4">
+                            <div className="flex items-center justify-between gap-2 relative">
+                              <h4 className="text-sm font-bold text-surface-900 dark:text-white truncate group-hover:text-primary-600 transition-colors pr-8">
+                                {stop.name}
+                              </h4>
+                              <span className="text-[10px] font-bold font-mono text-surface-400 shrink-0">
+                                {formatTime(stopArrivalTime)}
+                              </span>
+                              
+                              <button 
+                                onClick={() => unassignPlace(stop.id)}
+                                className="absolute top-1/2 -translate-y-1/2 right-[-10px] opacity-0 group-hover:opacity-100 p-1.5 bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-600 text-surface-400 hover:text-red-500 hover:border-red-200 dark:hover:border-red-900/50 shadow-lg rounded-lg transition-all z-20"
+                                title="Remove from day"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                            
+                            {stop.description && (
+                              <div className="mt-1">
+                                <ExpandableDescription text={stop.description} />
+                              </div>
+                            )}
                           </div>
                         </div>
-                        {/* Segment after Start Hotel */}
-                        {route.segments && route.segments[0] && (
-                          <SegmentPill segment={route.segments[0]} dayIndex={route.day} segmentIndex={0} />
+
+                        {segmentIdx < route.segments.length && (
+                          <div className="mt-[-4px]">
+                            {(() => {
+                              const travelTime = Math.round(route.segments[segmentIdx].time / 60);
+                              const element = <SegmentPill 
+                                segment={route.segments[segmentIdx]} 
+                                dayIndex={i} 
+                                segmentIndex={segmentIdx} 
+                              />;
+                              currentTime += travelTime;
+                              return element;
+                            })()}
+                          </div>
                         )}
                       </div>
-                    )}
+                    );
+                  })}
 
-                    {/* Stops */}
-                    {route.stops.map((stop, stopIdx) => {
-                      const segmentIdx = route.startHotel ? stopIdx + 1 : stopIdx;
-                      return (
-                        <div key={stopIdx} className="relative z-10 group/stop">
-                          <div className="flex items-start gap-3">
-                            <div className="schedule-node-icon bg-surface-900 dark:bg-surface-700 text-white text-xs font-bold">
-                              {stopIdx + 1}
-                            </div>
-                            <div className="flex-1 pb-1">
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-semibold text-surface-900 dark:text-white flex items-center gap-1.5">
-                                    <span>{getCategoryEmoji(stop.category || 'other')}</span>
-                                    <span className="truncate">{stop.name}</span>
-                                  </p>
-                                  <p className="text-[11px] text-surface-400 dark:text-surface-500 font-medium mt-0.5">
-                                    ⏱ {stop.estimatedDuration || 60} min visit
-                                  </p>
-                                </div>
-                                <button
-                                  onClick={() => unassignPlace(stop.id)}
-                                  className="opacity-0 group-hover/stop:opacity-100 p-1 text-surface-400 dark:text-surface-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-all shrink-0"
-                                  title="Remove from this day"
-                                >
-                                  <X className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                              {stop.description && <ExpandableDescription text={stop.description} />}
-                            </div>
-                          </div>
-                          {/* Segment after this stop */}
-                          {route.segments && route.segments[segmentIdx] && (
-                            <SegmentPill segment={route.segments[segmentIdx]} dayIndex={route.day} segmentIndex={segmentIdx} />
-                          )}
+                  {route.endHotel && (
+                    <div className="relative">
+                      {/* Line connector - only above */}
+                      <div className="absolute left-5 top-0 h-0 w-0.5 bg-surface-100 dark:bg-surface-700/50" />
+                      {isLastDay && showFlights && departureFlight && (
+                        <div className="absolute left-5 top-10 bottom-0 w-0.5 bg-surface-100 dark:bg-surface-700/50" />
+                      )}
+                      
+                      <div className="flex items-start gap-4 relative z-10 mt-2">
+                        <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900/50 text-primary-600 dark:text-primary-400 flex items-center justify-center shrink-0 shadow-sm">
+                          <Building2 className="w-5 h-5" />
                         </div>
-                      );
-                    })}
-
-                    {/* End Hotel */}
-                    {route.endHotel && (
-                      <div className="relative z-10">
-                        <div className="flex items-start gap-3">
-                          <div className="schedule-node-icon bg-primary-100 dark:bg-primary-900/50 text-primary-600 dark:text-primary-400">
-                            <Building2 className="w-4 h-4" />
+                        <div className="flex-1 min-w-0 pt-0.5">
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm font-bold text-surface-900 dark:text-white truncate">{route.endHotel.name}</p>
+                            <span className="text-[10px] font-bold font-mono text-surface-400">{formatTime(currentTime)}</span>
                           </div>
-                          <div className="flex-1">
-                            <p className="text-sm font-semibold text-surface-900 dark:text-white">{route.endHotel.name}</p>
-                            <p className="text-xs text-surface-500 dark:text-surface-400">End of day</p>
-                          </div>
+                          <p className="text-[10px] text-surface-500 uppercase font-bold tracking-tight">Return to Hotel</p>
                         </div>
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
+
+                  {showFlights && isLastDay && departureFlight && (
+                    <div className="relative mt-2">
+                      <div className="absolute left-5 top-0 h-0 w-0.5 bg-surface-100 dark:bg-surface-700/50" />
+                      <BufferPill minutes={departureFlight.buffer} />
+                      <div className="flex items-start gap-4 relative z-10">
+                        <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0 shadow-sm">
+                          <PlaneTakeoff className="w-5 h-5" />
+                        </div>
+                        <div className="flex-1 min-w-0 pt-0.5">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-bold text-surface-900 dark:text-white">Flight Departure</h4>
+                            <span className="text-[10px] font-bold font-mono text-surface-400">{departureFlight.time}</span>
+                          </div>
+                          <p className="text-[10px] text-surface-500 uppercase font-bold tracking-tight">Heading Home</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

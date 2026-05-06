@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import { Place, Hotel, TravelMode, DayRoute, ItinerarySnapshot } from '../types';
 import { solveSingleDay } from '../services/tspSolver';
 import { estimateTime } from '../utils/distance';
+import { format, addDays, parseISO, differenceInDays } from 'date-fns';
 
 interface ModeData {
   places: Place[];
@@ -11,15 +12,20 @@ interface ModeData {
   optimizedRoutes: DayRoute[];
 }
 
-interface RouteState {
+interface RouteState extends ModeData {
   // Itinerary core
   title: string;
   days: number;
+  startDate: string; // YYYY-MM-DD
+  endDate: string; // YYYY-MM-DD
+  dateMode: 'fixed' | 'duration';
+  dayStartTime: string; // HH:mm
+  dayEndTime: string; // HH:mm
+  showFlights: boolean;
+  arrivalFlight: { time: string, buffer: number } | null;
+  departureFlight: { time: string, buffer: number } | null;
   travelMode: TravelMode;
   dailyBudget: number; // minutes (user-configurable)
-  places: Place[];
-  hotels: Hotel[];
-  missingPlaces: string[];
   appMode: 'real' | 'mock' | 'dropdown-mock';
   theme: 'light' | 'dark';
   optimizedRoutes: DayRoute[];
@@ -32,6 +38,13 @@ interface RouteState {
   // Actions
   setTitle: (title: string) => void;
   setDays: (days: number) => void;
+  setStartDate: (date: string) => void;
+  setEndDate: (date: string) => void;
+  setDateMode: (mode: 'fixed' | 'duration') => void;
+  setDayTimes: (start: string, end: string) => void;
+  setShowFlights: (show: boolean) => void;
+  setArrivalFlight: (flight: { time: string, buffer: number } | null) => void;
+  setDepartureFlight: (flight: { time: string, buffer: number } | null) => void;
   setTravelMode: (mode: TravelMode) => void;
   setDailyBudget: (minutes: number) => void;
   setAppMode: (mode: 'real' | 'mock' | 'dropdown-mock') => void;
@@ -75,6 +88,14 @@ export const useRouteStore = create<RouteState>()(
     (set, get) => ({
       title: 'My RE:Route Trip',
       days: 3,
+      startDate: format(new Date(), 'yyyy-MM-dd'),
+      endDate: format(addDays(new Date(), 2), 'yyyy-MM-dd'),
+      dateMode: 'duration',
+      dayStartTime: '09:00',
+      dayEndTime: '21:00',
+      showFlights: false,
+      arrivalFlight: null,
+      departureFlight: null,
       travelMode: 'driving',
       dailyBudget: 720, // 12 hours default
       places: [],
@@ -104,8 +125,27 @@ export const useRouteStore = create<RouteState>()(
         const newPlaces = state.places.map(p =>
           p.dayIndex !== null && p.dayIndex >= days ? { ...p, dayIndex: null, orderInDay: null, pinnedToDay: false } : p
         );
-        return { days, hotels: newHotels, places: newPlaces };
+        const newEndDate = format(addDays(parseISO(state.startDate), days - 1), 'yyyy-MM-dd');
+        return { days, hotels: newHotels, places: newPlaces, endDate: newEndDate };
       }),
+      setStartDate: (startDate) => set((state) => {
+        if (state.dateMode === 'fixed') {
+          const days = differenceInDays(parseISO(state.endDate), parseISO(startDate)) + 1;
+          return { startDate, days: Math.max(1, days) };
+        } else {
+          const endDate = format(addDays(parseISO(startDate), state.days - 1), 'yyyy-MM-dd');
+          return { startDate, endDate };
+        }
+      }),
+      setEndDate: (endDate) => set((state) => {
+        const days = differenceInDays(parseISO(endDate), parseISO(state.startDate)) + 1;
+        return { endDate, days: Math.max(1, days) };
+      }),
+      setDateMode: (dateMode) => set({ dateMode }),
+      setDayTimes: (dayStartTime, dayEndTime) => set({ dayStartTime, dayEndTime }),
+      setShowFlights: (showFlights) => set({ showFlights }),
+      setArrivalFlight: (arrivalFlight) => set({ arrivalFlight }),
+      setDepartureFlight: (departureFlight) => set({ departureFlight }),
       setTravelMode: (travelMode) => set({ travelMode }),
       setDailyBudget: (dailyBudget) => set({ dailyBudget }),
       setAppMode: (newMode) => set((state) => {
