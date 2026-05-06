@@ -1,29 +1,74 @@
-import React, { useState } from 'react';
-import { Search, Plus, CalendarDays } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Search, Plus, CalendarDays, Loader2, AlertCircle, FileText } from 'lucide-react';
 import { useRouteStore } from '../../store/useRouteStore';
 import { MOCK_PLACES } from '../../services/mockData';
+import { searchPlaces, MapsPlace } from '../../services/mapsService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getCategoryEmoji, getCategoryLabel, autoCategorize, getDefaultDuration } from '../../utils/categoryUtils';
+import { ImportModal } from './ImportModal';
+import { MissingPlacesList } from './MissingPlacesList';
 
 export const PlaceSearch: React.FC = () => {
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
+  const [results, setResults] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const { addPlace, appMode, days, sidebarWidth } = useRouteStore();
   const isSidebarExpanded = sidebarWidth >= 450;
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (appMode !== 'real') {
+      if (query.length > 0) {
+        setResults(MOCK_PLACES.filter(p => p.name.toLowerCase().includes(query.toLowerCase())));
+        setIsOpen(true);
+      } else {
+        setResults([]);
+        setIsOpen(false);
+      }
+      return;
+    }
+
+    // Real mode with debounce
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+
+    if (query.length < 2) {
+      setResults([]);
+      setIsOpen(false);
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    debounceTimerRef.current = setTimeout(async () => {
+      try {
+        const mapsResults = await searchPlaces(query);
+        setResults(mapsResults);
+        setIsOpen(true);
+      } catch (err) {
+        setError('Failed to search locations. Check your API key.');
+        setResults([]);
+      } finally {
+        setIsLoading(false);
+      }
+    }, 500);
+
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
+  }, [query, appMode]);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setQuery(e.target.value);
-    setIsOpen(e.target.value.length > 0);
   };
 
-  const results = appMode !== 'real'
-    ? MOCK_PLACES.filter(p => p.name.toLowerCase().includes(query.toLowerCase()))
-    : [];
-
-  const handleAdd = (place: typeof MOCK_PLACES[0]) => {
-    // Auto-categorize if no category set (for real mode places)
-    const category = place.category || autoCategorize(place.name, place.description);
+  const handleAdd = (place: any) => {
+    // For real places, we initialize them with limited data; Gemini will fill the rest
+    const category = place.category || autoCategorize(place.name, place.description || '');
     const estimatedDuration = place.estimatedDuration || getDefaultDuration(category);
     
     addPlace(
@@ -32,6 +77,8 @@ export const PlaceSearch: React.FC = () => {
         id: `p_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         category,
         estimatedDuration,
+        description: place.description || '',
+        descriptionSource: appMode === 'real' ? 'user' : 'mock'
       },
       selectedDay !== null ? selectedDay : undefined
     );
@@ -89,17 +136,42 @@ export const PlaceSearch: React.FC = () => {
     <div className="relative mb-6">
       <div className="flex gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-surface-400 w-5 h-5" />
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+            {isLoading ? (
+              <Loader2 className="text-primary-500 w-5 h-5 animate-spin" />
+            ) : (
+              <Search className="text-surface-400 w-5 h-5" />
+            )}
+          </div>
           <input
             type="text"
             value={query}
             onChange={handleSearch}
-            placeholder="Search for a place to add..."
+            placeholder={appMode === 'real' ? "Search real places with Google..." : "Search for a place to add..."}
             className="input-base rounded-xl py-3 pl-12 pr-4"
           />
         </div>
-        {daySelector}
+        <div className="flex flex-col gap-1">
+          {daySelector}
+          <button 
+            onClick={() => setIsImportOpen(true)}
+            className="flex items-center justify-center gap-1.5 px-2 py-1 text-[10px] font-bold text-surface-500 hover:text-primary-600 dark:text-surface-400 dark:hover:text-primary-400 border border-surface-200 dark:border-surface-700 rounded-lg hover:border-primary-500/50 transition-all"
+          >
+            <FileText className="w-3 h-3" />
+            Import List
+          </button>
+        </div>
       </div>
+
+      <ImportModal isOpen={isImportOpen} onClose={() => setIsImportOpen(false)} />
+      <MissingPlacesList />
+
+      {error && (
+        <div className="mt-2 flex items-center gap-2 text-xs text-red-500 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg border border-red-100 dark:border-red-900/30">
+          <AlertCircle className="w-3.5 h-3.5" />
+          {error}
+        </div>
+      )}
 
       <AnimatePresence>
         {isOpen && results.length > 0 && (
@@ -107,7 +179,7 @@ export const PlaceSearch: React.FC = () => {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-surface-800 rounded-xl shadow-lg border border-surface-100 dark:border-surface-700 overflow-hidden z-20"
+            className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-surface-800 rounded-xl shadow-lg border border-surface-100 dark:border-surface-700 overflow-hidden z-20 max-h-96 overflow-y-auto custom-scrollbar"
           >
             {results.map((place) => (
               <button
@@ -116,18 +188,20 @@ export const PlaceSearch: React.FC = () => {
                 className="w-full text-left px-4 py-3 hover:bg-surface-50 dark:hover:bg-surface-700 flex items-center justify-between group transition-colors border-b border-surface-50 dark:border-surface-700 last:border-0"
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-lg" title={getCategoryLabel(place.category)}>{getCategoryEmoji(place.category)}</span>
-                  <div>
-                    <h4 className="font-medium text-surface-900 dark:text-white">{place.name}</h4>
-                    <p className="text-xs text-surface-500 dark:text-surface-400">
-                      {getCategoryLabel(place.category)} · {place.estimatedDuration} min
+                  <span className="text-lg" title={getCategoryLabel(place.category || 'other')}>
+                    {getCategoryEmoji(place.category || 'other')}
+                  </span>
+                  <div className="min-w-0">
+                    <h4 className="font-medium text-surface-900 dark:text-white truncate">{place.name}</h4>
+                    <p className="text-[11px] text-surface-500 dark:text-surface-400 truncate">
+                      {place.address}
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   {selectedDay !== null && (
-                    <span className="text-xs font-semibold text-primary-600 bg-primary-50 px-2 py-0.5 rounded-full">
-                      Day {selectedDay + 1}
+                    <span className="text-[10px] font-bold text-primary-600 bg-primary-50 dark:bg-primary-900/30 px-2 py-0.5 rounded-full">
+                      D{selectedDay + 1}
                     </span>
                   )}
                   <div className="bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">

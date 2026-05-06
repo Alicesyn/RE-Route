@@ -1,10 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, MapPin } from 'lucide-react';
+import { Search, MapPin, Loader2 } from 'lucide-react';
 import { MOCK_HOTELS } from '../../services/mockData';
+import { useRouteStore } from '../../store/useRouteStore';
+import { searchPlaces } from '../../services/mapsService';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface HotelSearchInputProps {
-  onSelect: (hotelId: string) => void;
+  onSelect: (hotel: any) => void;
   placeholder?: string;
   currentValue?: string;
 }
@@ -13,22 +15,62 @@ export const HotelSearchInput: React.FC<HotelSearchInputProps> = ({ onSelect, pl
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [results, setResults] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
+  const { appMode } = useRouteStore();
   const inputRef = useRef<HTMLInputElement>(null);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (appMode !== 'real') {
+      if (query.length > 0) {
+        setResults(MOCK_HOTELS.filter(h => h.name.toLowerCase().includes(query.toLowerCase())));
+        setIsOpen(true);
+      } else {
+        setResults([]);
+        setIsOpen(false);
+      }
+      return;
+    }
+
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+
+    if (query.length < 2) {
+      setResults([]);
+      setIsOpen(false);
+      return;
+    }
+
+    setIsLoading(true);
+    debounceTimerRef.current = setTimeout(async () => {
+      try {
+        // Specifically search for hotels/lodging
+        const mapsResults = await searchPlaces(`${query} hotel`);
+        setResults(mapsResults);
+        setIsOpen(true);
+        updateDropdownPosition();
+      } catch (err) {
+        console.error('Hotel search error:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    }, 500);
+
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
+  }, [query, appMode]);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setQuery(e.target.value);
-    setIsOpen(e.target.value.length > 0);
   };
 
-  // Mock results
-  const results = MOCK_HOTELS.filter(h => h.name.toLowerCase().includes(query.toLowerCase()));
-
-  const handleSelect = (index: number) => {
+  const handleSelect = (hotel: any) => {
     setQuery('');
     setIsOpen(false);
     setIsEditing(false);
-    onSelect(index.toString());
+    onSelect(hotel);
   };
 
   const updateDropdownPosition = () => {
@@ -61,7 +103,6 @@ export const HotelSearchInput: React.FC<HotelSearchInputProps> = ({ onSelect, pl
     }, 200);
   };
 
-  // Update dropdown position on scroll or resize
   useEffect(() => {
     if (!isOpen) return;
     updateDropdownPosition();
@@ -80,7 +121,13 @@ export const HotelSearchInput: React.FC<HotelSearchInputProps> = ({ onSelect, pl
   return (
     <div className="relative w-full">
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400 w-4 h-4" />
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+          {isLoading ? (
+            <Loader2 className="w-4 h-4 text-primary-500 animate-spin" />
+          ) : (
+            <Search className="text-surface-400 dark:text-surface-500 w-4 h-4" />
+          )}
+        </div>
         <input 
           ref={inputRef}
           type="text"
@@ -100,27 +147,25 @@ export const HotelSearchInput: React.FC<HotelSearchInputProps> = ({ onSelect, pl
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 5 }}
             style={dropdownStyle}
-            className="bg-white dark:bg-surface-800 rounded-lg shadow-lg border border-surface-100 dark:border-surface-700 overflow-hidden max-h-60 overflow-y-auto"
+            className="bg-white dark:bg-surface-800 rounded-lg shadow-lg border border-surface-100 dark:border-surface-700 overflow-hidden max-h-60 overflow-y-auto custom-scrollbar"
           >
-            {results.map((hotel) => {
-              const originalIndex = MOCK_HOTELS.findIndex(h => h.name === hotel.name);
-              return (
-                <button
-                  key={originalIndex}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => handleSelect(originalIndex)}
-                  className="w-full text-left px-3 py-2 hover:bg-surface-50 dark:hover:bg-surface-700 flex flex-col group transition-colors border-b border-surface-50 dark:border-surface-700 last:border-0"
-                >
-                  <span className="font-medium text-surface-900 dark:text-white text-sm">{hotel.name}</span>
-                  <span className="text-xs text-surface-500 truncate flex items-center gap-1">
-                    <MapPin className="w-3 h-3" /> {hotel.address}
-                  </span>
-                </button>
-              );
-            })}
+            {results.map((hotel, i) => (
+              <button
+                key={hotel.id || i}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => handleSelect(hotel)}
+                className="w-full text-left px-3 py-2 hover:bg-surface-50 dark:hover:bg-surface-700 flex flex-col group transition-colors border-b border-surface-50 dark:border-surface-700 last:border-0"
+              >
+                <span className="font-medium text-surface-900 dark:text-white text-sm">{hotel.name}</span>
+                <span className="text-[11px] text-surface-500 dark:text-surface-400 truncate flex items-center gap-1">
+                  <MapPin className="w-3 h-3" /> {hotel.address}
+                </span>
+              </button>
+            ))}
           </motion.div>
         )}
       </AnimatePresence>
     </div>
   );
 };
+

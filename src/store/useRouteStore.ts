@@ -4,6 +4,13 @@ import { Place, Hotel, TravelMode, DayRoute, ItinerarySnapshot } from '../types'
 import { solveSingleDay } from '../services/tspSolver';
 import { estimateTime } from '../utils/distance';
 
+interface ModeData {
+  places: Place[];
+  hotels: Hotel[];
+  missingPlaces: string[];
+  optimizedRoutes: DayRoute[];
+}
+
 interface RouteState {
   // Itinerary core
   title: string;
@@ -12,10 +19,15 @@ interface RouteState {
   dailyBudget: number; // minutes (user-configurable)
   places: Place[];
   hotels: Hotel[];
+  missingPlaces: string[];
   appMode: 'real' | 'mock' | 'dropdown-mock';
   theme: 'light' | 'dark';
   optimizedRoutes: DayRoute[];
   savedTrips: ItinerarySnapshot[];
+  
+  // Per-mode persistence
+  mockData: ModeData;
+  realData: ModeData;
 
   // Actions
   setTitle: (title: string) => void;
@@ -32,6 +44,11 @@ interface RouteState {
   removePlace: (id: string) => void;
   reorderPlaces: (places: Place[]) => void;
   clearAll: () => void;
+
+  // Missing Places
+  addMissingPlace: (name: string) => void;
+  removeMissingPlace: (name: string) => void;
+  clearMissingPlaces: () => void;
 
   // Day assignment
   assignPlaceToDay: (placeId: string, dayIndex: number) => void;
@@ -62,10 +79,13 @@ export const useRouteStore = create<RouteState>()(
       dailyBudget: 720, // 12 hours default
       places: [],
       hotels: [],
+      missingPlaces: [],
       appMode: 'mock',
       theme: 'light',
       optimizedRoutes: [],
       savedTrips: [],
+      mockData: { places: [], hotels: [], missingPlaces: [], optimizedRoutes: [] },
+      realData: { places: [], hotels: [], missingPlaces: [], optimizedRoutes: [] },
 
       setTitle: (title) => set({ title }),
       setDays: (days) => set((state) => {
@@ -88,7 +108,33 @@ export const useRouteStore = create<RouteState>()(
       }),
       setTravelMode: (travelMode) => set({ travelMode }),
       setDailyBudget: (dailyBudget) => set({ dailyBudget }),
-      setAppMode: (appMode) => set({ appMode }),
+      setAppMode: (newMode) => set((state) => {
+        const oldMode = state.appMode;
+        if (oldMode === newMode) return state;
+
+        // 1. Save current state into the storage for the old mode
+        const currentItinerary: ModeData = {
+          places: state.places,
+          hotels: state.hotels,
+          missingPlaces: state.missingPlaces,
+          optimizedRoutes: state.optimizedRoutes
+        };
+
+        const isOldModeReal = oldMode === 'real';
+        const updatedMockData = isOldModeReal ? state.mockData : currentItinerary;
+        const updatedRealData = isOldModeReal ? currentItinerary : state.realData;
+
+        // 2. Load state from the storage for the new mode
+        const isNewModeReal = newMode === 'real';
+        const targetData = isNewModeReal ? updatedRealData : updatedMockData;
+
+        return {
+          appMode: newMode,
+          mockData: updatedMockData,
+          realData: updatedRealData,
+          ...targetData
+        };
+      }),
       setTheme: (theme) => set({ theme }),
 
       addPlace: (place, targetDayIndex) => set((state) => {
@@ -122,8 +168,18 @@ export const useRouteStore = create<RouteState>()(
 
       clearAll: () => {
         console.log('Zustand clearAll executed');
-        set({ places: [], optimizedRoutes: [] });
+        set({ places: [], hotels: [], missingPlaces: [], optimizedRoutes: [] });
       },
+
+      addMissingPlace: (name) => set((state) => ({
+        missingPlaces: state.missingPlaces.includes(name) 
+          ? state.missingPlaces 
+          : [...state.missingPlaces, name]
+      })),
+      removeMissingPlace: (name) => set((state) => ({
+        missingPlaces: state.missingPlaces.filter(n => n !== name)
+      })),
+      clearMissingPlaces: () => set({ missingPlaces: [] }),
 
       // Day assignment actions
       assignPlaceToDay: (placeId, dayIndex) => set((state) => ({

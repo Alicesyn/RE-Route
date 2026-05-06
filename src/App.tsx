@@ -8,6 +8,7 @@ import { useRouteStore } from './store/useRouteStore';
 import { solveTSP } from './services/tspSolver';
 import { Wand2, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
+import { summarizePlace } from './services/aiService';
 
 function App() {
   const { places, hotels, days, travelMode, dailyBudget, optimizedRoutes, setOptimizedRoutes, clearAll, appMode, updatePlacesBulk, theme } = useRouteStore();
@@ -57,32 +58,55 @@ function App() {
   const handleGenerateDescriptions = async () => {
     setIsGenerating(true);
 
-    // Find places that need descriptions
-    const placesToUpdate = places.filter(p => !p.description || p.description.trim() === '');
+    // Find places that need real AI descriptions
+    const placesToUpdate = places.filter(p => p.descriptionSource !== 'ai');
 
     if (placesToUpdate.length === 0) {
       setIsGenerating(false);
       return;
     }
 
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    try {
+      const updates: {id: string, updates: any}[] = [];
+      
+      // Process sequentially to be nice to API rate limits
+      for (const p of placesToUpdate) {
+        try {
+          let aiData;
+          
+          if (appMode === 'real') {
+            aiData = await summarizePlace(p.name, p.address, (p as any).types || []);
+          } else {
+            // Simulated AI summary for Mock Mode
+            aiData = {
+              description: `[MOCK AI] This is a simulated high-quality description of ${p.name}. It focuses on the legendary reputation and the vibrant, unique atmosphere of the location.`,
+              category: p.category,
+              estimatedDuration: p.estimatedDuration
+            };
+          }
 
-    const updates = placesToUpdate.map(p => {
-      let desc = '';
-      if (appMode === 'real') {
-        desc = `[AI Generated] ${p.name} is a renowned destination located at ${p.address}. It offers a unique experience tailored for travelers.`;
-      } else {
-        desc = `[Mock AI] This is an auto-generated description for ${p.name}. It's a fantastic place to visit!`;
+          updates.push({
+            id: p.id,
+            updates: {
+              description: aiData.description,
+              category: aiData.category,
+              estimatedDuration: aiData.estimatedDuration,
+              descriptionSource: 'ai' as const
+            }
+          });
+        } catch (err) {
+          console.error(`Failed to summarize ${p.name}:`, err);
+        }
       }
-      return {
-        id: p.id,
-        updates: { description: desc, descriptionSource: 'ai' as const }
-      };
-    });
 
-    updatePlacesBulk(updates);
-    setIsGenerating(false);
+      if (updates.length > 0) {
+        updatePlacesBulk(updates);
+      }
+    } catch (err) {
+      console.error('AI Batch Processing Error:', err);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (

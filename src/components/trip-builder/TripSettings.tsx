@@ -24,14 +24,28 @@ export const TripSettings: React.FC = () => {
     }
   }, [days]);
 
-  // Helper to handle mock hotel assignment
-  const handleHotelChange = (dayIndex: number, hotelId: string) => {
-    if (appMode === 'real') return; // In real mode, use Google Places
-    
-    // Using index as ID for mock hotels
-    const mockHotel = MOCK_HOTELS[parseInt(hotelId)];
-    if (mockHotel) {
-      const hotel = { ...mockHotel, dayIndex };
+  // Helper to handle hotel assignment
+  const handleHotelChange = (dayIndex: number, hotelData: any) => {
+    let hotel;
+
+    if (appMode !== 'real') {
+      // Mock mode handles index as ID
+      const mockHotel = typeof hotelData === 'string' ? MOCK_HOTELS[parseInt(hotelData)] : hotelData;
+      if (mockHotel) {
+        hotel = { ...mockHotel, dayIndex };
+      }
+    } else {
+      // Real mode handles whole object
+      hotel = {
+        name: hotelData.name,
+        address: hotelData.address,
+        lat: hotelData.lat,
+        lng: hotelData.lng,
+        dayIndex
+      };
+    }
+
+    if (hotel) {
       if (sameHotel) {
         applyHotelToAllDays(hotel);
       } else {
@@ -59,8 +73,10 @@ export const TripSettings: React.FC = () => {
     setDaysInput(days.toString());
   };
 
-  const currentHotelForDay0 = hotels.find(h => h.dayIndex === 0) 
-    ? MOCK_HOTELS.findIndex(h => h.name === hotels.find(h => h.dayIndex === 0)?.name)
+  const currentHotel = hotels.find(h => h.dayIndex === 0);
+  const currentHotelName = currentHotel ? currentHotel.name : '';
+  const currentHotelMockIndex = currentHotel 
+    ? MOCK_HOTELS.findIndex(h => h.name === currentHotel.name)
     : '';
 
   const budgetHours = Math.floor(dailyBudget / 60);
@@ -158,7 +174,7 @@ export const TripSettings: React.FC = () => {
                 <>
                   <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400 dark:text-surface-500" />
                   <select
-                    value={currentHotelForDay0}
+                    value={currentHotelMockIndex}
                     onChange={(e) => handleHotelChange(0, e.target.value)}
                     className="w-full bg-surface-50 dark:bg-surface-900 border border-surface-200 dark:border-surface-700 text-surface-900 dark:text-white text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block pl-10 p-2.5 appearance-none"
                   >
@@ -170,9 +186,9 @@ export const TripSettings: React.FC = () => {
                 </>
               ) : (
                 <HotelSearchInput 
-                  onSelect={(id) => handleHotelChange(0, id)} 
+                  onSelect={(hotel) => handleHotelChange(0, hotel)} 
                   placeholder="Search for base hotel..." 
-                  currentValue={currentHotelForDay0 !== '' ? MOCK_HOTELS[currentHotelForDay0 as number].name : ''}
+                  currentValue={currentHotelName}
                 />
               )}
             </div>
