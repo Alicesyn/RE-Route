@@ -11,7 +11,12 @@ import { useState, useEffect, useCallback } from 'react';
 import { summarizePlace } from './services/aiService';
 
 function App() {
-  const { places, hotels, days, travelMode, dailyBudget, optimizedRoutes, setOptimizedRoutes, clearAll, appMode, updatePlacesBulk, theme } = useRouteStore();
+  const { 
+    places, hotels, days, travelMode, dailyBudget, 
+    optimizedRoutes, setOptimizedRoutes, clearAll, 
+    appMode, updatePlacesBulk, theme,
+    showFlights, arrivalFlight, departureFlight
+  } = useRouteStore();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -26,7 +31,15 @@ function App() {
 
   const handleOptimize = () => {
     if (places.length === 0) return;
-    const result = solveTSP(places, hotels, days, travelMode, dailyBudget);
+    const result = solveTSP(
+      places, 
+      hotels, 
+      days, 
+      travelMode, 
+      dailyBudget,
+      showFlights ? arrivalFlight?.location : null,
+      showFlights ? departureFlight?.location : null
+    );
     if (result.success) {
       setOptimizedRoutes(result.days);
       

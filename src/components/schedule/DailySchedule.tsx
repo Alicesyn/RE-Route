@@ -13,6 +13,12 @@ const formatTime = (totalMinutes: number) => {
   return `${displayHours}:${mins.toString().padStart(2, '0')} ${period}`;
 };
 
+const formatTimeString = (timeStr: string) => {
+  if (!timeStr) return '';
+  const [h, m] = timeStr.split(':').map(Number);
+  return formatTime(h * 60 + m);
+};
+
 const BufferPill: React.FC<{ minutes: number }> = ({ minutes }) => {
   return (
     <div className="pt-0 pb-3 pl-12 relative group">
@@ -29,7 +35,7 @@ const ExpandableDescription: React.FC<{ text: string }> = ({ text }) => {
 
   return (
     <div className="mt-0.5">
-      <p 
+      <p
         onClick={() => setIsExpanded(!isExpanded)}
         className={`text-xs text-surface-500 dark:text-surface-400 cursor-pointer hover:text-surface-700 dark:hover:text-surface-200 transition-colors ${isExpanded ? '' : 'line-clamp-1'}`}
         title={isExpanded ? "Click to collapse" : "Click to show more"}
@@ -52,7 +58,7 @@ const SegmentPill: React.FC<{
   };
 
   const getModeIcon = () => {
-    switch(segment.travelMode) {
+    switch (segment.travelMode) {
       case 'walking': return <Footprints className="w-3.5 h-3.5" />;
       case 'transit': return <Train className="w-3.5 h-3.5" />;
       case 'driving':
@@ -67,7 +73,7 @@ const SegmentPill: React.FC<{
         <span>{Math.round(segment.time / 60)} min</span>
         <span className="text-surface-300 dark:text-surface-600 mx-0.5">•</span>
         <span>{(segment.distance / 1000).toFixed(1)} km</span>
-        
+
         <select
           value={segment.travelMode || 'driving'}
           onChange={handleModeChange}
@@ -85,8 +91,8 @@ const SegmentPill: React.FC<{
 };
 
 export const DailySchedule: React.FC = () => {
-  const { 
-    optimizedRoutes, optimizeDay, unassignPlace, 
+  const {
+    optimizedRoutes, optimizeDay, unassignPlace,
     startDate, dateMode, dayStartTime, dayEndTime,
     showFlights, arrivalFlight, departureFlight
   } = useRouteStore();
@@ -112,14 +118,14 @@ export const DailySchedule: React.FC = () => {
         <div className="flex items-center gap-4">
           <h2 className="text-lg font-bold text-surface-900 dark:text-white">Optimized Schedule</h2>
         </div>
-        
+
         {/* Day Quick Navigation */}
         <div className="flex items-center gap-3 overflow-hidden min-w-0 flex-1 sm:justify-end">
           <div className="flex items-center gap-2 shrink-0">
             <span className="text-xs font-bold text-surface-400 uppercase tracking-wider whitespace-nowrap">Jump to:</span>
-            
+
             {optimizedRoutes.length > 18 && (
-              <input 
+              <input
                 type="number"
                 placeholder="Day #"
                 min={1}
@@ -157,7 +163,7 @@ export const DailySchedule: React.FC = () => {
         </div>
       </div>
 
-      <div 
+      <div
         ref={scrollContainerRef}
         className="p-6 overflow-x-auto overflow-y-hidden custom-scrollbar flex gap-6 snap-x snap-mandatory"
       >
@@ -198,8 +204,8 @@ export const DailySchedule: React.FC = () => {
           const budgetPct = Math.min(100, Math.round((totalDayMin / dayAvailableMinutes) * 100));
 
           return (
-            <div 
-              key={i} 
+            <div
+              key={i}
               id={`schedule-day-${i}`}
               className="flex-shrink-0 w-80 md:w-96 snap-start"
             >
@@ -226,22 +232,27 @@ export const DailySchedule: React.FC = () => {
                       )}
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3 text-[10px] font-bold text-surface-500 uppercase tracking-tight">
-                      <span className="flex items-center gap-1">
-                        <Timer className="w-3 h-3" />
-                        {visitMin > 60 ? `${Math.floor(visitMin / 60)}h ${visitMin % 60}m` : `${visitMin}m`}
+                      <span className="flex items-center gap-1.5 bg-surface-100 dark:bg-surface-700/50 px-2 py-0.5 rounded-full">
+                        <Timer className="w-3 h-3 text-primary-500" />
+                        <span className="text-surface-400">Visit:</span>
+                        <span className="text-surface-600 dark:text-surface-300">
+                          {visitMin > 60 ? `${Math.floor(visitMin / 60)}h ${visitMin % 60}m` : `${visitMin}m`}
+                        </span>
                       </span>
-                      <span>+</span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {travelMin}m
+                      <span className="flex items-center gap-1.5 bg-surface-100 dark:bg-surface-700/50 px-2 py-0.5 rounded-full">
+                        <Clock className="w-3 h-3 text-primary-500" />
+                        <span className="text-surface-400">Travel:</span>
+                        <span className="text-surface-600 dark:text-surface-300">
+                          {travelMin > 60 ? `${Math.floor(travelMin / 60)}h ${travelMin % 60}m` : `${travelMin}m`}
+                        </span>
                       </span>
                     </div>
                     <div className={`text-[10px] font-black px-1.5 py-0.5 rounded ${isOverBudget ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
                       {isOverBudget ? 'OVER BUDGET' : (
-                        remainingTime >= 60 
+                        remainingTime >= 60
                           ? `${Math.floor(remainingTime / 60)}h ${remainingTime % 60}m left`
                           : `${remainingTime}m left`
                       )}
@@ -250,7 +261,7 @@ export const DailySchedule: React.FC = () => {
 
                   {/* Budget bar */}
                   <div className="w-full bg-surface-100 dark:bg-surface-700 rounded-full h-1 mt-3 overflow-hidden">
-                    <div 
+                    <div
                       className={`h-full rounded-full transition-all ${isOverBudget ? 'bg-red-500' : 'bg-primary-500'}`}
                       style={{ width: `${budgetPct}%` }}
                     />
@@ -262,20 +273,41 @@ export const DailySchedule: React.FC = () => {
                     <div className="relative">
                       {/* Line connector - only below */}
                       <div className="absolute left-5 top-10 bottom-0 w-0.5 bg-surface-100 dark:bg-surface-700/50" />
-                      
+
                       <div className="flex items-start gap-4 relative z-10">
                         <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 shadow-sm">
                           <PlaneLanding className="w-5 h-5" />
                         </div>
                         <div className="flex-1 min-w-0 pt-0.5 pb-2">
                           <div className="flex items-center justify-between">
-                            <h4 className="text-sm font-bold text-surface-900 dark:text-white">Flight Arrival</h4>
-                            <span className="text-[10px] font-bold font-mono text-surface-400">{arrivalFlight.time}</span>
+                            <h4 className="text-sm font-bold text-surface-900 dark:text-white">
+                              {arrivalFlight.location ? arrivalFlight.location.name : 'Flight Arrival'}
+                            </h4>
+                            <span className="text-[10px] font-bold font-mono text-surface-400">{formatTimeString(arrivalFlight.time)}</span>
                           </div>
-                          <p className="text-[10px] text-surface-500 uppercase font-bold tracking-tight">At Destination</p>
+                          <p className="text-[10px] text-surface-500 uppercase font-bold tracking-tight">
+                            {arrivalFlight.location ? 'Airport/Station Arrival' : 'At Destination'}
+                          </p>
                         </div>
                       </div>
                       <BufferPill minutes={arrivalFlight.buffer} />
+
+                      {/* Travel segment to hotel if location is set */}
+                      {arrivalFlight.location && route.segments.length > 0 && (
+                        <div className="mt-[-4px]">
+                          {(() => {
+                            const seg = route.segments[0];
+                            const travelTime = Math.round(seg.time / 60);
+                            const element = <SegmentPill
+                              segment={seg}
+                              dayIndex={i}
+                              segmentIndex={0}
+                            />;
+                            currentTime += travelTime;
+                            return element;
+                          })()}
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -285,7 +317,7 @@ export const DailySchedule: React.FC = () => {
                       {(route.stops.length > 0 || route.endHotel) && (
                         <div className="absolute left-5 top-10 bottom-0 w-0.5 bg-surface-100 dark:bg-surface-700/50" />
                       )}
-                      
+
                       <div className="flex items-start gap-4 relative z-10 mb-4">
                         <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900/50 text-primary-600 dark:text-primary-400 flex items-center justify-center shrink-0 shadow-sm">
                           <Building2 className="w-5 h-5" />
@@ -312,9 +344,16 @@ export const DailySchedule: React.FC = () => {
                   )}
 
                   {route.stops.map((stop, stopIdx) => {
-                    const segmentIdx = route.startHotel ? stopIdx + 1 : stopIdx;
+                    // Calculate the index for the segment leading TO this stop
+                    // Segment 0: Arrival -> Hotel (if both exist)
+                    // Segment 1: Hotel -> Stop 1 (if hotel exists) OR Arrival -> Stop 1 (if only arrival exists)
+                    let leadingSegIdx = stopIdx;
+                    if (isFirstDay && showFlights && arrivalFlight?.location) leadingSegIdx += 1;
+                    if (route.startHotel) leadingSegIdx += 1;
+
                     const stopArrivalTime = currentTime;
                     currentTime += (stop.estimatedDuration || 0);
+
                     const isLastStop = stopIdx === route.stops.length - 1;
                     const hasMore = !isLastStop || route.endHotel || (isLastDay && showFlights && departureFlight);
 
@@ -325,14 +364,14 @@ export const DailySchedule: React.FC = () => {
                         {hasMore && (
                           <div className="absolute left-5 top-10 bottom-0 w-0.5 bg-surface-100 dark:bg-surface-700/50" />
                         )}
-                        
+
                         <div className="flex gap-4 relative z-10">
                           <div className="w-10 h-10 rounded-full bg-white dark:bg-surface-800 border-2 border-surface-100 dark:border-surface-700 flex items-center justify-center shrink-0 shadow-sm group-hover:border-primary-500 transition-colors">
                             <span className="text-sm">
                               {getCategoryEmoji(stop.category)}
                             </span>
                           </div>
-                          
+
                           <div className="flex-1 min-w-0 pt-0.5 pb-4">
                             <div className="flex items-center justify-between gap-2 relative">
                               <h4 className="text-sm font-bold text-surface-900 dark:text-white truncate group-hover:text-primary-600 transition-colors pr-8">
@@ -341,8 +380,8 @@ export const DailySchedule: React.FC = () => {
                               <span className="text-[10px] font-bold font-mono text-surface-400 shrink-0">
                                 {formatTime(stopArrivalTime)}
                               </span>
-                              
-                              <button 
+
+                              <button
                                 onClick={() => unassignPlace(stop.id)}
                                 className="absolute top-1/2 -translate-y-1/2 right-[-10px] opacity-0 group-hover:opacity-100 p-1.5 bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-600 text-surface-400 hover:text-red-500 hover:border-red-200 dark:hover:border-red-900/50 shadow-lg rounded-lg transition-all z-20"
                                 title="Remove from day"
@@ -350,7 +389,7 @@ export const DailySchedule: React.FC = () => {
                                 <X className="w-3.5 h-3.5" />
                               </button>
                             </div>
-                            
+
                             {stop.description && (
                               <div className="mt-1">
                                 <ExpandableDescription text={stop.description} />
@@ -359,14 +398,14 @@ export const DailySchedule: React.FC = () => {
                           </div>
                         </div>
 
-                        {segmentIdx < route.segments.length && (
+                        {leadingSegIdx < route.segments.length && (
                           <div className="mt-[-4px]">
                             {(() => {
-                              const travelTime = Math.round(route.segments[segmentIdx].time / 60);
-                              const element = <SegmentPill 
-                                segment={route.segments[segmentIdx]} 
-                                dayIndex={i} 
-                                segmentIndex={segmentIdx} 
+                              const travelTime = Math.round(route.segments[leadingSegIdx].time / 60);
+                              const element = <SegmentPill
+                                segment={route.segments[leadingSegIdx]}
+                                dayIndex={i}
+                                segmentIndex={leadingSegIdx}
                               />;
                               currentTime += travelTime;
                               return element;
@@ -384,7 +423,7 @@ export const DailySchedule: React.FC = () => {
                       {isLastDay && showFlights && departureFlight && (
                         <div className="absolute left-5 top-10 bottom-0 w-0.5 bg-surface-100 dark:bg-surface-700/50" />
                       )}
-                      
+
                       <div className="flex items-start gap-4 relative z-10 mt-2">
                         <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900/50 text-primary-600 dark:text-primary-400 flex items-center justify-center shrink-0 shadow-sm">
                           <Building2 className="w-5 h-5" />
@@ -402,7 +441,26 @@ export const DailySchedule: React.FC = () => {
 
                   {showFlights && isLastDay && departureFlight && (
                     <div className="relative mt-2">
-                      <div className="absolute left-5 top-0 h-0 w-0.5 bg-surface-100 dark:bg-surface-700/50" />
+                      <div className="absolute left-5 top-0 bottom-10 w-0.5 bg-surface-100 dark:bg-surface-700/50" />
+
+                      {/* Travel segment from hotel if location is set */}
+                      {departureFlight.location && route.segments.length > 0 && (
+                        <div className="mt-[-4px]">
+                          {(() => {
+                            const segIdx = route.segments.length - 1;
+                            const seg = route.segments[segIdx];
+                            const travelTime = Math.round(seg.time / 60);
+                            const element = <SegmentPill
+                              segment={seg}
+                              dayIndex={i}
+                              segmentIndex={segIdx}
+                            />;
+                            // Time is already updated by previous segments and hotels
+                            return element;
+                          })()}
+                        </div>
+                      )}
+
                       <BufferPill minutes={departureFlight.buffer} />
                       <div className="flex items-start gap-4 relative z-10">
                         <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0 shadow-sm">
@@ -410,10 +468,14 @@ export const DailySchedule: React.FC = () => {
                         </div>
                         <div className="flex-1 min-w-0 pt-0.5">
                           <div className="flex items-center justify-between">
-                            <h4 className="text-sm font-bold text-surface-900 dark:text-white">Flight Departure</h4>
-                            <span className="text-[10px] font-bold font-mono text-surface-400">{departureFlight.time}</span>
+                            <h4 className="text-sm font-bold text-surface-900 dark:text-white">
+                              {departureFlight.location ? departureFlight.location.name : 'Flight Departure'}
+                            </h4>
+                            <span className="text-[10px] font-bold font-mono text-surface-400">{formatTimeString(departureFlight.time)}</span>
                           </div>
-                          <p className="text-[10px] text-surface-500 uppercase font-bold tracking-tight">Heading Home</p>
+                          <p className="text-[10px] text-surface-500 uppercase font-bold tracking-tight">
+                            {departureFlight.location ? 'Airport/Station Departure' : 'Heading Home'}
+                          </p>
                         </div>
                       </div>
                     </div>

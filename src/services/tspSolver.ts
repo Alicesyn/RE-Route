@@ -140,7 +140,14 @@ function calculateTotalDistance(points: {lat: number, lng: number}[]): number {
   return dist;
 }
 
-function buildDayRoute(dayPlaces: Place[], hotels: Hotel[], dayIndex: number, travelMode: TravelMode): DayRoute {
+function buildDayRoute(
+  dayPlaces: Place[], 
+  hotels: Hotel[], 
+  dayIndex: number, 
+  travelMode: TravelMode,
+  arrivalLocation?: Place | null,
+  departureLocation?: Place | null
+): DayRoute {
   const endHotel = hotels.find(h => h.dayIndex === dayIndex) || null;
   const startHotel = dayIndex > 0 ? (hotels.find(h => h.dayIndex === dayIndex - 1) || null) : endHotel;
   
@@ -149,9 +156,11 @@ function buildDayRoute(dayPlaces: Place[], hotels: Hotel[], dayIndex: number, tr
   let dayDist = 0;
   
   const points = [];
+  if (arrivalLocation) points.push(arrivalLocation);
   if (startHotel) points.push(startHotel);
   points.push(...optimizedPlaces);
   if (endHotel) points.push(endHotel);
+  if (departureLocation) points.push(departureLocation);
   
   const segments: { distance: number, time: number, travelMode: TravelMode }[] = [];
   
@@ -181,8 +190,15 @@ function buildDayRoute(dayPlaces: Place[], hotels: Hotel[], dayIndex: number, tr
 }
 
 // Optimize a single day's route
-export function solveSingleDay(dayPlaces: Place[], hotels: Hotel[], dayIndex: number, travelMode: TravelMode): DayRoute {
-  return buildDayRoute(dayPlaces, hotels, dayIndex, travelMode);
+export function solveSingleDay(
+  dayPlaces: Place[], 
+  hotels: Hotel[], 
+  dayIndex: number, 
+  travelMode: TravelMode,
+  arrivalLocation?: Place | null,
+  departureLocation?: Place | null
+): DayRoute {
+  return buildDayRoute(dayPlaces, hotels, dayIndex, travelMode, arrivalLocation, departureLocation);
 }
 
 export function solveTSP(
@@ -190,7 +206,9 @@ export function solveTSP(
   hotels: Hotel[], 
   days: number, 
   travelMode: TravelMode,
-  dailyBudgetMin: number = DEFAULT_DAILY_BUDGET_MIN
+  dailyBudgetMin: number = DEFAULT_DAILY_BUDGET_MIN,
+  arrivalLocation?: Place | null,
+  departureLocation?: Place | null
 ): OptimizationResult {
   const startTime = performance.now();
   
@@ -204,7 +222,14 @@ export function solveTSP(
   // 2. Optimize each day
   for (let d = 0; d < days; d++) {
     const dayPlaces = clusteredPlaces.filter(p => p.dayIndex === d);
-    const route = buildDayRoute(dayPlaces, hotels, d, travelMode);
+    const route = buildDayRoute(
+      dayPlaces, 
+      hotels, 
+      d, 
+      travelMode, 
+      d === 0 ? arrivalLocation : null,
+      d === days - 1 ? departureLocation : null
+    );
     dayRoutes.push(route);
     totalTripDistance += route.totalDistance;
     totalTripTime += route.totalTime;

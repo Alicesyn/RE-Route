@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, Car, Train, Footprints, Building2, PlaneTakeoff, PlaneLanding, Plus, Minus } from 'lucide-react';
+import { Settings, X, Calendar, Clock, MapPin, Building2, ChevronDown, Check, Plane, Plus, Minus, PlaneTakeoff, PlaneLanding, Timer, Car, Footprints, Train } from 'lucide-react';
+import { PlaceSearchInput } from './PlaceSearchInput';
 import { useRouteStore } from '../../store/useRouteStore';
 import { TravelMode } from '../../types';
 import { MOCK_HOTELS } from '../../services/mockData';
@@ -40,6 +41,16 @@ export const TripSettings: React.FC = () => {
     } else {
       setDaysInput(days.toString());
     }
+  };
+
+  const handleArrivalChange = (updates: Partial<{ time: string, buffer: number, location: any }>) => {
+    const current = arrivalFlight || { time: '12:00', buffer: 60, location: null };
+    setArrivalFlight({ ...current, ...updates });
+  };
+
+  const handleDepartureChange = (updates: Partial<{ time: string, buffer: number, location: any }>) => {
+    const current = departureFlight || { time: '12:00', buffer: 60, location: null };
+    setDepartureFlight({ ...current, ...updates });
   };
 
   const handleHotelChange = (dayIndex: number, hotelData: any) => {
@@ -231,64 +242,108 @@ export const TripSettings: React.FC = () => {
 
       <hr className="border-surface-100 dark:border-surface-700" />
 
-      {/* Flight & Arrival */}
+      {/* Flight & Travel Section */}
       <div>
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-surface-900 dark:text-white uppercase tracking-wider">Flight & Travel</h3>
-          <label className="flex items-center gap-2 cursor-pointer group">
-            <input 
-              type="checkbox" 
-              checked={showFlights}
-              onChange={(e) => setShowFlights(e.target.checked)}
-              className="rounded border-surface-300 text-primary-600 focus:ring-primary-500"
-            />
-            <span className="text-[10px] font-bold text-surface-500 uppercase">Enable flight tracking</span>
-          </label>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold text-surface-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+            <Plane className="w-4 h-4" />
+            Flight & Travel
+          </h3>
+          <button 
+            onClick={() => setShowFlights(!showFlights)}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-300 focus:outline-none ring-2 ring-offset-2 ring-offset-white dark:ring-offset-surface-800 ring-transparent focus:ring-primary-500/50 ${showFlights ? 'bg-primary-500 shadow-[0_0_12px_rgba(var(--primary-500-rgb),0.4)]' : 'bg-surface-300 dark:bg-surface-600'}`}
+          >
+            <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-300 ${showFlights ? 'translate-x-6' : 'translate-x-1'}`} />
+          </button>
         </div>
 
         {showFlights && (
-          <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-            <div className="bg-surface-50 dark:bg-surface-900/50 p-4 rounded-xl border border-surface-200 dark:border-surface-700">
-              <div className="flex items-center gap-2 mb-3 text-emerald-600 dark:text-emerald-400">
-                <PlaneLanding className="w-4 h-4" />
-                <span className="text-xs font-bold uppercase tracking-wide">Arrival (Day 1)</span>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <input 
-                  type="time"
-                  value={arrivalFlight?.time || ''}
-                  onChange={(e) => setArrivalFlight({ time: e.target.value, buffer: arrivalFlight?.buffer || 120 })}
-                  className="w-full bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 text-surface-900 dark:text-white text-xs rounded-lg p-2 outline-none"
-                />
-                <input 
-                  type="number"
-                  placeholder="Buffer (mins)"
-                  value={arrivalFlight?.buffer || ''}
-                  onChange={(e) => setArrivalFlight({ time: arrivalFlight?.time || '12:00', buffer: parseInt(e.target.value) || 0 })}
-                  className="w-full bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 text-surface-900 dark:text-white text-xs rounded-lg p-2 outline-none"
-                />
+          <div className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-300">
+            <div className="bg-primary-50/50 dark:bg-primary-900/10 rounded-2xl p-4 border border-primary-100/50 dark:border-primary-900/20">
+              <h4 className="text-xs font-bold text-primary-700 dark:text-primary-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <PlaneTakeoff className="w-3.5 h-3.5" />
+                Arrival Journey (Day 1)
+              </h4>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-surface-400 uppercase mb-1.5 ml-1">Arrival Airport/Station <span className="text-[9px] lowercase font-medium opacity-60">(optional)</span></label>
+                  <PlaceSearchInput 
+                    icon="airport"
+                    placeholder="Search for airport or station..."
+                    currentValue={arrivalFlight?.location?.name}
+                    onSelect={(loc) => handleArrivalChange({ location: loc })}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-surface-400 uppercase mb-1.5 ml-1">Land Time</label>
+                    <div className="relative">
+                      <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
+                      <input 
+                        type="time" 
+                        value={arrivalFlight?.time || '12:00'}
+                        onChange={(e) => handleArrivalChange({ time: e.target.value })}
+                        className="w-full bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl py-2.5 pl-10 pr-4 text-sm font-bold text-surface-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-surface-400 uppercase mb-1.5 ml-1">Buffer (Min)</label>
+                    <div className="relative">
+                      <Timer className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
+                      <input 
+                        type="number" 
+                        value={arrivalFlight?.buffer || 60}
+                        onChange={(e) => handleArrivalChange({ buffer: parseInt(e.target.value) || 0 })}
+                        className="w-full bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl py-2.5 pl-10 pr-4 text-sm font-bold text-surface-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div className="bg-surface-50 dark:bg-surface-900/50 p-4 rounded-xl border border-surface-200 dark:border-surface-700">
-              <div className="flex items-center gap-2 mb-3 text-red-600 dark:text-red-400">
-                <PlaneTakeoff className="w-4 h-4" />
-                <span className="text-xs font-bold uppercase tracking-wide">Departure (Day {days})</span>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <input 
-                  type="time"
-                  value={departureFlight?.time || ''}
-                  onChange={(e) => setDepartureFlight({ time: e.target.value, buffer: departureFlight?.buffer || 120 })}
-                  className="w-full bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 text-surface-900 dark:text-white text-xs rounded-lg p-2 outline-none"
-                />
-                <input 
-                  type="number"
-                  placeholder="Buffer (mins)"
-                  value={departureFlight?.buffer || ''}
-                  onChange={(e) => setDepartureFlight({ time: departureFlight?.time || '12:00', buffer: parseInt(e.target.value) || 0 })}
-                  className="w-full bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 text-surface-900 dark:text-white text-xs rounded-lg p-2 outline-none"
-                />
+            <div className="bg-red-50/50 dark:bg-red-900/10 rounded-2xl p-4 border border-red-100/50 dark:border-red-900/20">
+              <h4 className="text-xs font-bold text-red-700 dark:text-red-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <PlaneLanding className="w-3.5 h-3.5" />
+                Departure Journey (Day {days})
+              </h4>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-surface-400 uppercase mb-1.5 ml-1">Departure Airport/Station <span className="text-[9px] lowercase font-medium opacity-60">(optional)</span></label>
+                  <PlaceSearchInput 
+                    icon="airport"
+                    placeholder="Search for airport or station..."
+                    currentValue={departureFlight?.location?.name}
+                    onSelect={(loc) => handleDepartureChange({ location: loc })}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-surface-400 uppercase mb-1.5 ml-1">Takeoff Time</label>
+                    <div className="relative">
+                      <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
+                      <input 
+                        type="time" 
+                        value={departureFlight?.time || '12:00'}
+                        onChange={(e) => handleDepartureChange({ time: e.target.value })}
+                        className="w-full bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl py-2.5 pl-10 pr-4 text-sm font-bold text-surface-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-surface-400 uppercase mb-1.5 ml-1">Buffer (Min)</label>
+                    <div className="relative">
+                      <Timer className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
+                      <input 
+                        type="number" 
+                        value={departureFlight?.buffer || 60}
+                        onChange={(e) => handleDepartureChange({ buffer: parseInt(e.target.value) || 0 })}
+                        className="w-full bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl py-2.5 pl-10 pr-4 text-sm font-bold text-surface-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

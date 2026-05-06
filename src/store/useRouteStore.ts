@@ -22,8 +22,8 @@ interface RouteState extends ModeData {
   dayStartTime: string; // HH:mm
   dayEndTime: string; // HH:mm
   showFlights: boolean;
-  arrivalFlight: { time: string, buffer: number } | null;
-  departureFlight: { time: string, buffer: number } | null;
+  arrivalFlight: { time: string, buffer: number, location: Place | null } | null;
+  departureFlight: { time: string, buffer: number, location: Place | null } | null;
   travelMode: TravelMode;
   dailyBudget: number; // minutes (user-configurable)
   appMode: 'real' | 'mock' | 'dropdown-mock';
@@ -43,8 +43,8 @@ interface RouteState extends ModeData {
   setDateMode: (mode: 'fixed' | 'duration') => void;
   setDayTimes: (start: string, end: string) => void;
   setShowFlights: (show: boolean) => void;
-  setArrivalFlight: (flight: { time: string, buffer: number } | null) => void;
-  setDepartureFlight: (flight: { time: string, buffer: number } | null) => void;
+  setArrivalFlight: (flight: { time: string, buffer: number, location: Place | null } | null) => void;
+  setDepartureFlight: (flight: { time: string, buffer: number, location: Place | null } | null) => void;
   setTravelMode: (mode: TravelMode) => void;
   setDailyBudget: (minutes: number) => void;
   setAppMode: (mode: 'real' | 'mock' | 'dropdown-mock') => void;
@@ -280,7 +280,14 @@ export const useRouteStore = create<RouteState>()(
         const dayPlaces = state.places.filter(p => p.dayIndex === dayIndex);
         if (dayPlaces.length === 0) return;
 
-        const result = solveSingleDay(dayPlaces, state.hotels, dayIndex, state.travelMode);
+        const result = solveSingleDay(
+          dayPlaces, 
+          state.hotels, 
+          dayIndex, 
+          state.travelMode,
+          (dayIndex === 0 && state.showFlights) ? state.arrivalFlight?.location : null,
+          (dayIndex === state.days - 1 && state.showFlights) ? state.departureFlight?.location : null
+        );
 
         // Update only this day in optimizedRoutes
         set((state) => {
