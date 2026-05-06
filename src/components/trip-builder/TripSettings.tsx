@@ -15,6 +15,14 @@ export const TripSettings: React.FC = () => {
   } = useRouteStore();
 
   const [sameHotel, setSameHotel] = useState(true);
+  const [daysInput, setDaysInput] = useState(days.toString());
+
+  // Synchronize local input with store days if store changes externally
+  React.useEffect(() => {
+    if (parseInt(daysInput) !== days) {
+      setDaysInput(days.toString());
+    }
+  }, [days]);
 
   // Helper to handle mock hotel assignment
   const handleHotelChange = (dayIndex: number, hotelId: string) => {
@@ -32,6 +40,25 @@ export const TripSettings: React.FC = () => {
     }
   };
 
+  const handleDaysChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setDaysInput(val);
+    
+    const num = parseInt(val);
+    if (!isNaN(num)) {
+      // Constrain and update store, but keep raw value in input
+      const constrained = Math.max(1, Math.min(14, num));
+      if (constrained !== days) {
+        setDays(constrained);
+      }
+    }
+  };
+
+  const handleDaysBlur = () => {
+    // On blur, ensure input matches store exactly (handles empty case)
+    setDaysInput(days.toString());
+  };
+
   const currentHotelForDay0 = hotels.find(h => h.dayIndex === 0) 
     ? MOCK_HOTELS.findIndex(h => h.name === hotels.find(h => h.dayIndex === 0)?.name)
     : '';
@@ -40,45 +67,46 @@ export const TripSettings: React.FC = () => {
   const budgetMins = dailyBudget % 60;
 
   return (
-    <div className="bg-white rounded-xl border border-surface-200 p-5 shadow-sm space-y-6 overflow-visible">
+    <div className="bg-white dark:bg-surface-800 rounded-xl border border-surface-200 dark:border-surface-700 p-5 shadow-sm space-y-6 overflow-visible transition-colors">
       
       {/* Travel Mode */}
       <div>
-        <h3 className="text-sm font-semibold text-surface-900 uppercase tracking-wider mb-3">Travel Mode</h3>
-        <div className="flex bg-surface-100 p-1 rounded-lg">
+        <h3 className="text-sm font-semibold text-surface-900 dark:text-white uppercase tracking-wider mb-3">Travel Mode</h3>
+        <div className="flex flex-wrap bg-surface-100 dark:bg-surface-900/50 p-1 rounded-lg gap-1">
           {(['walking', 'transit', 'driving'] as TravelMode[]).map((mode) => (
             <button
               key={mode}
               onClick={() => setTravelMode(mode)}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-medium capitalize transition-all ${
+              className={`flex-1 min-w-[80px] flex items-center justify-center gap-1 sm:gap-2 py-2 px-2 rounded-md text-xs sm:text-sm font-medium capitalize transition-all ${
                 travelMode === mode 
-                  ? 'bg-white text-primary-600 shadow-sm' 
-                  : 'text-surface-600 hover:text-surface-900'
+                  ? 'bg-white dark:bg-surface-700 text-primary-600 dark:text-primary-400 shadow-sm' 
+                  : 'text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-surface-200'
               }`}
             >
-              {mode === 'walking' && <Footprints className="w-4 h-4" />}
-              {mode === 'transit' && <Train className="w-4 h-4" />}
-              {mode === 'driving' && <Car className="w-4 h-4" />}
-              {mode}
+              {mode === 'walking' && <Footprints className="w-4 h-4 shrink-0" />}
+              {mode === 'transit' && <Train className="w-4 h-4 shrink-0" />}
+              {mode === 'driving' && <Car className="w-4 h-4 shrink-0" />}
+              <span className="truncate">{mode}</span>
             </button>
           ))}
         </div>
       </div>
 
-      <hr className="border-surface-100" />
+      <hr className="border-surface-100 dark:border-surface-700" />
 
       {/* Itinerary Settings */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-surface-900 uppercase tracking-wider">Schedule & Stays</h3>
-          <div className="flex items-center gap-2 text-sm text-surface-600 bg-surface-50 px-2 py-1 rounded-md border border-surface-200">
+          <h3 className="text-sm font-semibold text-surface-900 dark:text-white uppercase tracking-wider">Schedule & Stays</h3>
+          <div className="flex items-center gap-2 text-sm text-surface-600 dark:text-surface-300 bg-surface-50 dark:bg-surface-900 px-2 py-1 rounded-md border border-surface-200 dark:border-surface-700">
             <Calendar className="w-4 h-4" />
             <input 
               type="number" 
               min={1} 
               max={14} 
-              value={days}
-              onChange={(e) => setDays(Math.max(1, Math.min(14, parseInt(e.target.value) || 1)))}
+              value={daysInput}
+              onChange={handleDaysChange}
+              onBlur={handleDaysBlur}
               className="w-12 bg-transparent text-center font-medium focus:outline-none"
             />
             <span>Days</span>
@@ -88,11 +116,11 @@ export const TripSettings: React.FC = () => {
         {/* Daily Time Budget */}
         <div className="mb-4">
           <div className="flex items-center justify-between mb-2">
-            <label className="flex items-center gap-1.5 text-sm text-surface-700 font-medium">
-              <Clock className="w-4 h-4 text-surface-400" />
+            <label className="flex items-center gap-1.5 text-sm text-surface-700 dark:text-surface-300 font-medium">
+              <Clock className="w-4 h-4 text-surface-400 dark:text-surface-500" />
               Daily Time Budget
             </label>
-            <span className="text-sm font-semibold text-primary-600 bg-primary-50 px-2 py-0.5 rounded-md">
+            <span className="text-sm font-semibold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 px-2 py-0.5 rounded-md">
               {budgetHours}h{budgetMins > 0 ? ` ${budgetMins}m` : ''}
             </span>
           </div>
@@ -103,7 +131,7 @@ export const TripSettings: React.FC = () => {
             step={30}
             value={dailyBudget}
             onChange={(e) => setDailyBudget(parseInt(e.target.value))}
-            className="w-full h-2 bg-surface-200 rounded-lg appearance-none cursor-pointer accent-primary-600"
+            className="w-full h-2 bg-surface-200 dark:bg-surface-700 rounded-lg appearance-none cursor-pointer accent-primary-600"
           />
           <div className="flex justify-between text-[10px] text-surface-400 mt-1">
             <span>6h</span>
@@ -114,7 +142,7 @@ export const TripSettings: React.FC = () => {
         </div>
 
         <div className="space-y-4">
-          <label className="flex items-center gap-2 text-sm text-surface-700 cursor-pointer">
+          <label className="flex items-center gap-2 text-sm text-surface-700 dark:text-surface-300 cursor-pointer">
             <input 
               type="checkbox" 
               checked={sameHotel}
@@ -128,11 +156,11 @@ export const TripSettings: React.FC = () => {
             <div className="relative flex items-center">
               {appMode === 'dropdown-mock' ? (
                 <>
-                  <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
+                  <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400 dark:text-surface-500" />
                   <select
                     value={currentHotelForDay0}
                     onChange={(e) => handleHotelChange(0, e.target.value)}
-                    className="w-full bg-surface-50 border border-surface-200 text-surface-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block pl-10 p-2.5 appearance-none"
+                    className="w-full bg-surface-50 dark:bg-surface-900 border border-surface-200 dark:border-surface-700 text-surface-900 dark:text-white text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block pl-10 p-2.5 appearance-none"
                   >
                     <option value="" disabled>Select base hotel...</option>
                     {MOCK_HOTELS.map((h, i) => (
@@ -157,15 +185,15 @@ export const TripSettings: React.FC = () => {
                   
                 return (
                   <div key={i} className="flex items-center gap-3">
-                    <span className="text-xs font-semibold text-surface-500 w-12 shrink-0">Day {i + 1}</span>
+                    <span className="text-xs font-semibold text-surface-500 dark:text-surface-400 w-12 shrink-0">Day {i + 1}</span>
                     <div className="relative flex-1">
                       {appMode === 'dropdown-mock' ? (
                         <>
-                          <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
+                          <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400 dark:text-surface-500" />
                           <select
                             value={dayHotelIndex}
                             onChange={(e) => handleHotelChange(i, e.target.value)}
-                            className="w-full bg-surface-50 border border-surface-200 text-surface-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block pl-10 p-2 appearance-none"
+                            className="w-full bg-surface-50 dark:bg-surface-900 border border-surface-200 dark:border-surface-700 text-surface-900 dark:text-white text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block pl-10 p-2 appearance-none"
                           >
                             <option value="" disabled>Select hotel...</option>
                             {MOCK_HOTELS.map((h, idx) => (

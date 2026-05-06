@@ -7,12 +7,21 @@ import { DailySchedule } from './components/schedule/DailySchedule';
 import { useRouteStore } from './store/useRouteStore';
 import { solveTSP } from './services/tspSolver';
 import { Wand2, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 function App() {
-  const { places, hotels, days, travelMode, dailyBudget, setOptimizedRoutes, clearAll, appMode, updatePlacesBulk } = useRouteStore();
+  const { places, hotels, days, travelMode, dailyBudget, optimizedRoutes, setOptimizedRoutes, clearAll, appMode, updatePlacesBulk, theme } = useRouteStore();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  // Apply dark mode
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
 
   const handleOptimize = () => {
     if (places.length === 0) return;
@@ -77,41 +86,61 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-surface-50 flex flex-col font-sans">
+    <div className="min-h-screen bg-surface-50 dark:bg-surface-900 flex flex-col font-sans transition-colors overflow-hidden">
       <Header />
 
-      <main className="panel-main">
-        {/* Left Panel: Trip Builder */}
-        <div className="panel-left">
-          <div className="p-6 overflow-y-auto flex-1 custom-scrollbar print:overflow-visible print:p-0">
-            <TripSettings />
+      <main className="flex-1 overflow-y-auto p-4 sm:p-6 w-full custom-scrollbar">
+        <div className="max-w-[1600px] mx-auto space-y-8 pb-12">
+          {/* Top Row: Trip Settings & Map */}
+          <div className="flex flex-col lg:flex-row gap-6 items-stretch">
+            <div className="w-full lg:w-1/3 flex flex-col bg-white dark:bg-surface-800 rounded-xl shadow-sm border border-surface-200 dark:border-surface-700">
+              <div className="p-5 flex-1">
+                <TripSettings />
+              </div>
+              <div className="p-4 bg-surface-50 dark:bg-surface-900 border-t border-surface-200 dark:border-surface-700">
+                <button
+                  onClick={handleOptimize}
+                  disabled={places.length === 0}
+                  className="btn-primary w-full flex items-center justify-center gap-2 group"
+                >
+                  <Wand2 className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+                  Optimize Route
+                </button>
+              </div>
+            </div>
+            
+            <div className="w-full lg:w-2/3 flex flex-col min-h-[400px] rounded-xl overflow-hidden shadow-sm border border-surface-200 dark:border-surface-700 relative">
+              <div className="absolute inset-0">
+                <MapView />
+              </div>
+            </div>
+          </div>
 
-            <div className="mt-8 flex items-center justify-between mb-4">
+          {/* Middle Row: Places to Visit */}
+          <div className="bg-white dark:bg-surface-800 rounded-xl p-4 sm:p-6 shadow-sm border border-surface-200 dark:border-surface-700">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold text-surface-900">Places to Visit</h2>
-                <span className="bg-primary-100 text-primary-700 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                <h2 className="text-xl font-bold text-surface-900 dark:text-white">Places to Visit</h2>
+                <span className="bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 text-sm font-semibold px-2.5 py-0.5 rounded-full">
                   {places.length}
                 </span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 {places.some(p => !p.description || p.description.trim() === '') && (
                   <button
                     onClick={handleGenerateDescriptions}
                     disabled={isGenerating}
-                    className="flex items-center gap-1.5 text-xs font-semibold text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 px-2.5 py-1.5 rounded-lg transition-all disabled:opacity-50 disabled:cursor-wait"
+                    className="flex items-center gap-1.5 text-sm font-semibold text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-lg transition-all disabled:opacity-50 disabled:cursor-wait"
                     title="Auto-generate missing descriptions"
                   >
-                    <Sparkles className={`w-3.5 h-3.5 ${isGenerating ? 'animate-pulse' : ''}`} />
+                    <Sparkles className={`w-4 h-4 ${isGenerating ? 'animate-pulse' : ''}`} />
                     {isGenerating ? 'Writing...' : 'AI Describe'}
                   </button>
                 )}
                 {places.length > 0 && (
                   <button
-                    onClick={() => {
-                      console.log('Button clicked, calling clearAll...');
-                      clearAll();
-                    }}
-                    className="text-xs font-semibold text-red-500 hover:text-red-700 hover:underline transition-all px-1"
+                    onClick={() => clearAll()}
+                    className="text-sm font-semibold text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/30 px-3 py-1.5 rounded-lg transition-all"
                   >
                     Clear All
                   </button>
@@ -120,45 +149,33 @@ function App() {
             </div>
 
             <PlaceSearch />
-            <div className="relative">
+            
+            <div className="mt-4">
               <PlaceList isExpanded={isExpanded} />
-
-              {places.length > 3 && (
+              
+              {places.length > 6 && (
                 <button
                   onClick={() => setIsExpanded(!isExpanded)}
-                  className="w-full mt-3 flex items-center justify-center gap-1.5 text-xs font-semibold text-surface-500 hover:text-surface-800 bg-surface-100 hover:bg-surface-200 py-2 rounded-lg transition-colors"
+                  className="w-full mt-4 flex items-center justify-center gap-1.5 text-sm font-semibold text-surface-500 hover:text-surface-800 bg-surface-100 hover:bg-surface-200 py-2.5 rounded-lg transition-colors"
                 >
                   {isExpanded ? (
-                    <><ChevronUp className="w-4 h-4" /> Show Less</>
+                    <><ChevronUp className="w-4 h-4" /> Collapse Grid</>
                   ) : (
-                    <><ChevronDown className="w-4 h-4" /> Show All {places.length} Places</>
+                    <><ChevronDown className="w-4 h-4" /> Expand Grid to Show All {places.length} Places</>
                   )}
                 </button>
               )}
             </div>
           </div>
 
-          {/* Optimize Button Footer */}
-          <div className="p-4 bg-white border-t border-surface-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-            <button
-              onClick={handleOptimize}
-              disabled={places.length === 0}
-              className="btn-primary w-full flex items-center justify-center gap-2 group"
-            >
-              <Wand2 className="w-5 h-5 group-hover:rotate-12 transition-transform" />
-              Optimize Route
-            </button>
-          </div>
-        </div>
-
-        {/* Right Panel: Map */}
-        <div className="flex-1 bg-surface-200 relative z-0 print:hidden">
-          <MapView />
+          {/* Bottom Row: Daily Schedule */}
+          {optimizedRoutes.length > 0 && (
+            <div className="bg-white dark:bg-surface-800 rounded-xl shadow-sm border border-surface-200 dark:border-surface-700 overflow-hidden">
+              <DailySchedule />
+            </div>
+          )}
         </div>
       </main>
-
-      {/* Bottom Panel */}
-      <DailySchedule />
     </div>
   );
 }

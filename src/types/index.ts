@@ -32,6 +32,7 @@ export type TravelMode = 'walking' | 'transit' | 'driving';
 export interface RouteSegment {
   distance: number;
   time: number;
+  travelMode: TravelMode;
 }
 
 export interface DayRoute {

@@ -6,7 +6,7 @@ import { ImportModal } from './ImportModal';
 import { LoadTripModal } from './LoadTripModal';
 
 export const Header: React.FC = () => {
-  const { appMode, setAppMode, title, saveTrip, places } = useRouteStore();
+  const { appMode, setAppMode, title, saveTrip, places, theme, setTheme } = useRouteStore();
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isLoadOpen, setIsLoadOpen] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
@@ -29,12 +29,12 @@ export const Header: React.FC = () => {
   };
 
   return (
-    <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-50">
+    <header className="bg-white dark:bg-surface-800 border-b border-gray-200 dark:border-surface-700 px-6 py-4 flex items-center justify-between sticky top-0 z-50 transition-colors">
       <div className="flex items-center gap-3">
         <div className="bg-primary-500 p-2 rounded-lg">
           <Map className="text-white w-6 h-6" />
         </div>
-        <h1 className="text-2xl font-bold text-surface-900 tracking-tight">{title}</h1>
+        <h1 className="text-2xl font-bold text-surface-900 dark:text-white tracking-tight">{title}</h1>
       </div>
       
       <div className="flex items-center gap-4">
@@ -44,8 +44,8 @@ export const Header: React.FC = () => {
             onChange={(e) => setAppMode(e.target.value as 'real' | 'mock' | 'dropdown-mock')}
             className={`appearance-none flex items-center gap-2 pl-4 pr-10 py-2 rounded-full text-sm font-medium transition-colors border cursor-pointer outline-none focus:ring-2 focus:ring-primary-500 ${
               appMode === 'real' 
-                ? 'bg-white text-surface-700 border-surface-200' 
-                : 'bg-amber-100 text-amber-800 border-amber-200'
+                ? 'bg-white dark:bg-surface-800 text-surface-700 dark:text-surface-200 border-surface-200 dark:border-surface-600' 
+                : 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-400 border-amber-200 dark:border-amber-800/50'
             }`}
           >
             <option value="real">Real Mode</option>
@@ -53,14 +53,32 @@ export const Header: React.FC = () => {
             <option value="dropdown-mock">Dropdown Mock Mode</option>
           </select>
           <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-            {appMode === 'real' ? <Moon className="w-4 h-4 text-surface-400" /> : <Sun className="w-4 h-4 text-amber-600" />}
+            {appMode === 'real' ? <Moon className="w-4 h-4 text-surface-400 dark:text-surface-500" /> : <Sun className="w-4 h-4 text-amber-600 dark:text-amber-500" />}
           </div>
         </div>
+
+        {/* Theme Toggle */}
+        <button 
+          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors border outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-surface-800 text-surface-700 dark:text-surface-200 border-surface-200 dark:border-surface-600 hover:bg-surface-50 dark:hover:bg-surface-700"
+        >
+          {theme === 'dark' ? (
+            <>
+              <Moon className="w-4 h-4 text-surface-400 dark:text-surface-500" />
+              <span>Dark Mode</span>
+            </>
+          ) : (
+            <>
+              <Sun className="w-4 h-4 text-amber-600 dark:text-amber-500" />
+              <span>Light Mode</span>
+            </>
+          )}
+        </button>
         
         <button 
           onClick={handleSave}
           className={`flex items-center gap-2 font-medium text-sm transition-colors ${
-            isSaved ? 'text-green-600' : 'text-surface-600 hover:text-primary-600'
+            isSaved ? 'text-green-600 dark:text-green-500' : 'text-surface-600 dark:text-surface-300 hover:text-primary-600 dark:hover:text-primary-400'
           }`}
         >
           {isSaved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
@@ -69,14 +87,14 @@ export const Header: React.FC = () => {
 
         <button 
           onClick={() => setIsLoadOpen(true)}
-          className="flex items-center gap-2 text-surface-600 hover:text-primary-600 font-medium text-sm transition-colors"
+          className="flex items-center gap-2 text-surface-600 dark:text-surface-300 hover:text-primary-600 dark:hover:text-primary-400 font-medium text-sm transition-colors"
         >
           <FolderOpen className="w-4 h-4" /> Load
         </button>
 
         <button 
           onClick={() => setIsImportOpen(true)}
-          className="flex items-center gap-2 text-surface-600 hover:text-primary-600 font-medium text-sm transition-colors"
+          className="flex items-center gap-2 text-surface-600 dark:text-surface-300 hover:text-primary-600 dark:hover:text-primary-400 font-medium text-sm transition-colors"
         >
           <Upload className="w-4 h-4" /> Import
         </button>

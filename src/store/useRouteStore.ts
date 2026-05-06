@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { Place, Hotel, TravelMode, DayRoute, ItinerarySnapshot } from '../types';
 import { solveSingleDay } from '../services/tspSolver';
+import { estimateTime } from '../utils/distance';
 
 interface RouteState {
   // Itinerary core
@@ -12,38 +13,41 @@ interface RouteState {
   places: Place[];
   hotels: Hotel[];
   appMode: 'real' | 'mock' | 'dropdown-mock';
+  theme: 'light' | 'dark';
   optimizedRoutes: DayRoute[];
   savedTrips: ItinerarySnapshot[];
-  
+
   // Actions
   setTitle: (title: string) => void;
   setDays: (days: number) => void;
   setTravelMode: (mode: TravelMode) => void;
   setDailyBudget: (minutes: number) => void;
   setAppMode: (mode: 'real' | 'mock' | 'dropdown-mock') => void;
-  
+  setTheme: (theme: 'light' | 'dark') => void;
+
   // Places
   addPlace: (place: Omit<Place, 'dayIndex' | 'orderInDay' | 'pinnedToDay'>, targetDayIndex?: number) => void;
   updatePlace: (id: string, updates: Partial<Place>) => void;
-  updatePlacesBulk: (updates: {id: string, updates: Partial<Place>}[]) => void;
+  updatePlacesBulk: (updates: { id: string, updates: Partial<Place> }[]) => void;
   removePlace: (id: string) => void;
   reorderPlaces: (places: Place[]) => void;
   clearAll: () => void;
-  
+
   // Day assignment
   assignPlaceToDay: (placeId: string, dayIndex: number) => void;
   unassignPlace: (placeId: string) => void;
-  
+
   // Hotels
   setHotelForDay: (dayIndex: number, hotel: Hotel) => void;
   applyHotelToAllDays: (hotel: Hotel) => void;
-  
+
   // Results
   setOptimizedRoutes: (routes: DayRoute[]) => void;
-  
+  updateSegmentTravelMode: (dayIndex: number, segmentIndex: number, mode: TravelMode) => void;
+
   // Per-day optimization
   optimizeDay: (dayIndex: number) => void;
-  
+
   // Trips
   saveTrip: () => void;
   loadTrip: (id: string) => void;
@@ -52,13 +56,14 @@ interface RouteState {
 export const useRouteStore = create<RouteState>()(
   persist(
     (set, get) => ({
-      title: 'My Re:Route Trip',
+      title: 'My RE:Route Trip',
       days: 3,
       travelMode: 'driving',
       dailyBudget: 720, // 12 hours default
       places: [],
       hotels: [],
       appMode: 'mock',
+      theme: 'light',
       optimizedRoutes: [],
       savedTrips: [],
 
@@ -76,7 +81,7 @@ export const useRouteStore = create<RouteState>()(
           }
         }
         // Reset dayIndex on places that exceed the new days limit
-        const newPlaces = state.places.map(p => 
+        const newPlaces = state.places.map(p =>
           p.dayIndex !== null && p.dayIndex >= days ? { ...p, dayIndex: null, orderInDay: null, pinnedToDay: false } : p
         );
         return { days, hotels: newHotels, places: newPlaces };
@@ -84,7 +89,8 @@ export const useRouteStore = create<RouteState>()(
       setTravelMode: (travelMode) => set({ travelMode }),
       setDailyBudget: (dailyBudget) => set({ dailyBudget }),
       setAppMode: (appMode) => set({ appMode }),
-      
+      setTheme: (theme) => set({ theme }),
+
       addPlace: (place, targetDayIndex) => set((state) => {
         const newPlace: Place = {
           ...place,
@@ -96,38 +102,38 @@ export const useRouteStore = create<RouteState>()(
         };
         return { places: [...state.places, newPlace] };
       }),
-      
+
       updatePlace: (id, updates) => set((state) => ({
         places: state.places.map(p => p.id === id ? { ...p, ...updates } : p)
       })),
-      
+
       updatePlacesBulk: (updates) => set((state) => ({
         places: state.places.map(p => {
           const update = updates.find(u => u.id === p.id);
           return update ? { ...p, ...update.updates } : p;
         })
       })),
-      
+
       removePlace: (id) => set((state) => ({
         places: state.places.filter(p => p.id !== id)
       })),
 
       reorderPlaces: (places) => set({ places }),
-      
+
       clearAll: () => {
         console.log('Zustand clearAll executed');
         set({ places: [], optimizedRoutes: [] });
       },
-      
+
       // Day assignment actions
       assignPlaceToDay: (placeId, dayIndex) => set((state) => ({
-        places: state.places.map(p => 
+        places: state.places.map(p =>
           p.id === placeId
             ? { ...p, dayIndex, orderInDay: state.places.filter(pl => pl.dayIndex === dayIndex).length, pinnedToDay: true }
             : p
         )
       })),
-      
+
       unassignPlace: (placeId) => set((state) => ({
         places: state.places.map(p =>
           p.id === placeId
@@ -135,12 +141,12 @@ export const useRouteStore = create<RouteState>()(
             : p
         )
       })),
-      
+
       setHotelForDay: (dayIndex, hotel) => set((state) => {
         const existing = state.hotels.filter(h => h.dayIndex !== dayIndex);
         return { hotels: [...existing, hotel] };
       }),
-      
+
       applyHotelToAllDays: (hotel) => set((state) => {
         const hotels = Array.from({ length: state.days }).map((_, i) => ({
           ...hotel,
@@ -148,17 +154,38 @@ export const useRouteStore = create<RouteState>()(
         }));
         return { hotels };
       }),
-      
+
       setOptimizedRoutes: (optimizedRoutes) => set({ optimizedRoutes }),
       
+      updateSegmentTravelMode: (dayIndex, segmentIndex, mode) => set((state) => {
+        const newRoutes = [...state.optimizedRoutes];
+        const routeIdx = newRoutes.findIndex(r => r.day === dayIndex);
+        if (routeIdx >= 0) {
+          const route = { ...newRoutes[routeIdx] };
+          const segments = [...route.segments];
+          if (segments[segmentIndex]) {
+            const seg = { ...segments[segmentIndex] };
+            seg.travelMode = mode;
+            seg.time = estimateTime(seg.distance, mode);
+            segments[segmentIndex] = seg;
+            
+            // Recalculate total time
+            route.segments = segments;
+            route.totalTime = segments.reduce((sum, s) => sum + s.time, 0);
+            newRoutes[routeIdx] = route;
+          }
+        }
+        return { optimizedRoutes: newRoutes };
+      }),
+
       // Per-day optimization
       optimizeDay: (dayIndex) => {
         const state = get();
         const dayPlaces = state.places.filter(p => p.dayIndex === dayIndex);
         if (dayPlaces.length === 0) return;
-        
+
         const result = solveSingleDay(dayPlaces, state.hotels, dayIndex, state.travelMode);
-        
+
         // Update only this day in optimizedRoutes
         set((state) => {
           const newRoutes = [...state.optimizedRoutes];
@@ -169,18 +196,18 @@ export const useRouteStore = create<RouteState>()(
             newRoutes.push(result);
             newRoutes.sort((a, b) => a.day - b.day);
           }
-          
+
           // Also update place order in the places array based on optimization result
           const updatedPlaces = state.places.map(p => {
             if (p.dayIndex !== dayIndex) return p;
             const stopIdx = result.stops.findIndex(s => s.id === p.id);
             return stopIdx >= 0 ? { ...p, orderInDay: stopIdx } : p;
           });
-          
+
           return { optimizedRoutes: newRoutes, places: updatedPlaces };
         });
       },
-      
+
       saveTrip: () => set((state) => {
         const snapshot: ItinerarySnapshot = {
           id: `trip_${Date.now()}`,
@@ -201,7 +228,7 @@ export const useRouteStore = create<RouteState>()(
         }
         return { savedTrips: [...state.savedTrips, snapshot] };
       }),
-      
+
       loadTrip: (id) => set((state) => {
         const trip = state.savedTrips.find(t => t.id === id);
         if (!trip) return state;

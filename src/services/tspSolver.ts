@@ -22,7 +22,7 @@ function clusterPlaces(
   const dayTimeUsed: number[] = Array(days).fill(0);
   for (const p of pinned) {
     if (p.dayIndex !== null) {
-      dayTimeUsed[p.dayIndex] += p.estimatedDuration;
+      dayTimeUsed[p.dayIndex] += (p.estimatedDuration ?? 60);
     }
   }
   
@@ -41,7 +41,7 @@ function clusterPlaces(
   const toAssign = unassigned.map(p => ({ ...p, dayIndex: null as number | null, orderInDay: null as number | null }));
   
   // Sort by longest duration first (greedy: schedule big items first for better packing)
-  toAssign.sort((a, b) => b.estimatedDuration - a.estimatedDuration);
+  toAssign.sort((a, b) => (b.estimatedDuration ?? 60) - (a.estimatedDuration ?? 60));
   
   // Greedy assignment: put each place on the day with the most remaining budget
   for (const place of toAssign) {
@@ -57,7 +57,7 @@ function clusterPlaces(
         travelMin = estimateTime(dist, travelMode) / 60; // seconds to minutes
       }
       
-      const totalIfAdded = dayTimeUsed[d] + place.estimatedDuration + travelMin;
+      const totalIfAdded = dayTimeUsed[d] + (place.estimatedDuration ?? 60) + travelMin;
       const remaining = dailyBudgetMin - totalIfAdded;
       
       if (remaining > maxRemaining) {
@@ -75,7 +75,7 @@ function clusterPlaces(
       const dist = getDistance(place.lat, place.lng, hotel.lat, hotel.lng);
       travelMin = estimateTime(dist, travelMode) / 60;
     }
-    dayTimeUsed[bestDay] += place.estimatedDuration + travelMin;
+    dayTimeUsed[bestDay] += (place.estimatedDuration ?? 60) + travelMin;
   }
   
   return [...pinned, ...toAssign];
@@ -153,19 +153,20 @@ function buildDayRoute(dayPlaces: Place[], hotels: Hotel[], dayIndex: number, tr
   points.push(...optimizedPlaces);
   if (endHotel) points.push(endHotel);
   
-  const segments: { distance: number, time: number }[] = [];
+  const segments: { distance: number, time: number, travelMode: TravelMode }[] = [];
   
   for (let i = 0; i < points.length - 1; i++) {
     const segDist = getDistance(points[i].lat, points[i].lng, points[i+1].lat, points[i+1].lng);
     dayDist += segDist;
     segments.push({
       distance: segDist,
-      time: estimateTime(segDist, travelMode)
+      time: estimateTime(segDist, travelMode),
+      travelMode
     });
   }
   
   const dayTravelTime = estimateTime(dayDist, travelMode);
-  const dayVisitTime = optimizedPlaces.reduce((sum, p) => sum + p.estimatedDuration * 60, 0); // minutes to seconds
+  const dayVisitTime = optimizedPlaces.reduce((sum, p) => sum + (p.estimatedDuration ?? 60) * 60, 0); // minutes to seconds
   
   return {
     day: dayIndex,

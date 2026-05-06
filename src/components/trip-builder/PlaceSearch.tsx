@@ -9,7 +9,8 @@ export const PlaceSearch: React.FC = () => {
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
-  const { addPlace, appMode, days } = useRouteStore();
+  const { addPlace, appMode, days, sidebarWidth } = useRouteStore();
+  const isSidebarExpanded = sidebarWidth >= 450;
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setQuery(e.target.value);
@@ -40,16 +41,16 @@ export const PlaceSearch: React.FC = () => {
 
   const daySelector = (
     <div className="flex items-center gap-1.5 shrink-0">
-      <CalendarDays className="w-3.5 h-3.5 text-surface-400" />
+      <CalendarDays className="w-3.5 h-3.5 text-surface-400 dark:text-surface-500" />
       <select
         value={selectedDay !== null ? selectedDay : ''}
         onChange={(e) => setSelectedDay(e.target.value === '' ? null : parseInt(e.target.value))}
-        className="text-xs font-medium bg-surface-50 border border-surface-200 text-surface-700 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary-500 appearance-none cursor-pointer"
+        className="text-xs font-medium bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 text-surface-700 dark:text-surface-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary-500 appearance-none cursor-pointer"
         title="Assign to day"
       >
-        <option value="">Unassigned</option>
+        <option value="">{isSidebarExpanded ? 'Unassigned' : '-'}</option>
         {Array.from({ length: days }).map((_, i) => (
-          <option key={i} value={i}>Day {i + 1}</option>
+          <option key={i} value={i}>{isSidebarExpanded ? 'Day' : 'D'}{i + 1}</option>
         ))}
       </select>
     </div>
@@ -66,7 +67,7 @@ export const PlaceSearch: React.FC = () => {
                 if (place) handleAdd(place);
                 e.target.value = '';
               }}
-              className="w-full bg-white border border-surface-200 text-surface-900 rounded-xl py-3 pl-4 pr-10 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent appearance-none shadow-sm font-medium"
+              className="w-full bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 text-surface-900 dark:text-white rounded-xl py-3 pl-4 pr-10 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent appearance-none shadow-sm font-medium"
               defaultValue=""
             >
               <option value="" disabled>Select a place to add...</option>
@@ -106,19 +107,19 @@ export const PlaceSearch: React.FC = () => {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-lg border border-surface-100 overflow-hidden z-20"
+            className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-surface-800 rounded-xl shadow-lg border border-surface-100 dark:border-surface-700 overflow-hidden z-20"
           >
             {results.map((place) => (
               <button
                 key={place.id}
                 onClick={() => handleAdd(place)}
-                className="w-full text-left px-4 py-3 hover:bg-surface-50 flex items-center justify-between group transition-colors border-b border-surface-50 last:border-0"
+                className="w-full text-left px-4 py-3 hover:bg-surface-50 dark:hover:bg-surface-700 flex items-center justify-between group transition-colors border-b border-surface-50 dark:border-surface-700 last:border-0"
               >
                 <div className="flex items-center gap-3">
                   <span className="text-lg" title={getCategoryLabel(place.category)}>{getCategoryEmoji(place.category)}</span>
                   <div>
-                    <h4 className="font-medium text-surface-900">{place.name}</h4>
-                    <p className="text-xs text-surface-500">
+                    <h4 className="font-medium text-surface-900 dark:text-white">{place.name}</h4>
+                    <p className="text-xs text-surface-500 dark:text-surface-400">
                       {getCategoryLabel(place.category)} · {place.estimatedDuration} min
                     </p>
                   </div>
@@ -129,7 +130,7 @@ export const PlaceSearch: React.FC = () => {
                       Day {selectedDay + 1}
                     </span>
                   )}
-                  <div className="bg-primary-50 text-primary-600 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
                     <Plus className="w-4 h-4" />
                   </div>
                 </div>

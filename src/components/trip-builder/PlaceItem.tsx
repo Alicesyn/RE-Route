@@ -11,11 +11,12 @@ interface PlaceItemProps {
 }
 
 export const PlaceItem: React.FC<PlaceItemProps> = ({ place }) => {
-  const { updatePlace, removePlace, assignPlaceToDay, unassignPlace, days } = useRouteStore();
+  const { updatePlace, removePlace, assignPlaceToDay, unassignPlace, days, sidebarWidth } = useRouteStore();
+  const isSidebarExpanded = sidebarWidth >= 450;
   const [isEditing, setIsEditing] = useState(false);
   const [desc, setDesc] = useState(place.description || '');
   const [isEditingDuration, setIsEditingDuration] = useState(false);
-  const [durationVal, setDurationVal] = useState(place.estimatedDuration.toString());
+  const [durationVal, setDurationVal] = useState((place.estimatedDuration ?? 60).toString());
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const durationRef = useRef<HTMLInputElement>(null);
 
@@ -72,7 +73,7 @@ export const PlaceItem: React.FC<PlaceItemProps> = ({ place }) => {
     if (!isNaN(parsed) && parsed > 0 && parsed !== place.estimatedDuration) {
       updatePlace(place.id, { estimatedDuration: parsed });
     } else {
-      setDurationVal(place.estimatedDuration.toString());
+      setDurationVal((place.estimatedDuration ?? 60).toString());
     }
   };
 
@@ -129,11 +130,11 @@ export const PlaceItem: React.FC<PlaceItemProps> = ({ place }) => {
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-surface-900 flex items-center gap-2">
+              <h3 className="font-semibold text-surface-900 dark:text-white flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-primary-500 shrink-0" />
                 <span className="truncate">{place.name}</span>
               </h3>
-              <p className="text-xs text-surface-500 mt-0.5">{place.address}</p>
+              <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">{place.address}</p>
               
               {/* Category & Duration row */}
               <div className="flex items-center gap-2 mt-1.5 flex-wrap">
@@ -141,7 +142,7 @@ export const PlaceItem: React.FC<PlaceItemProps> = ({ place }) => {
                 <select
                   value={place.category}
                   onChange={handleCategoryChange}
-                  className="text-xs font-medium bg-surface-50 border border-surface-200 text-surface-600 rounded-md px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary-500 appearance-none cursor-pointer"
+                  className="text-xs font-medium bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 text-surface-600 dark:text-surface-300 rounded-md px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary-500 appearance-none cursor-pointer"
                   title="Change category"
                 >
                   {ALL_CATEGORIES.map(cat => (
@@ -152,7 +153,7 @@ export const PlaceItem: React.FC<PlaceItemProps> = ({ place }) => {
                 {/* Duration badge (click to edit) */}
                 {isEditingDuration ? (
                   <div className="flex items-center gap-1">
-                    <Clock className="w-3 h-3 text-surface-400" />
+                    <Clock className="w-3 h-3 text-surface-400 dark:text-surface-500" />
                     <input
                       ref={durationRef}
                       type="number"
@@ -163,20 +164,20 @@ export const PlaceItem: React.FC<PlaceItemProps> = ({ place }) => {
                       onBlur={handleDurationSave}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') handleDurationSave();
-                        if (e.key === 'Escape') { setIsEditingDuration(false); setDurationVal(place.estimatedDuration.toString()); }
+                        if (e.key === 'Escape') { setIsEditingDuration(false); setDurationVal((place.estimatedDuration ?? 60).toString()); }
                       }}
-                      className="w-14 text-xs font-medium bg-white border border-primary-300 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary-500 text-center"
+                      className="w-14 text-xs font-medium bg-white dark:bg-surface-800 border border-primary-300 dark:border-primary-700 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary-500 text-center text-surface-900 dark:text-white"
                     />
                     <span className="text-xs text-surface-500">min</span>
                   </div>
                 ) : (
                   <button
                     onClick={() => setIsEditingDuration(true)}
-                    className="flex items-center gap-1 text-xs font-medium text-surface-500 hover:text-surface-700 bg-surface-50 border border-surface-200 rounded-md px-1.5 py-0.5 hover:border-surface-300 transition-colors"
+                    className="flex items-center gap-1 text-xs font-medium text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-200 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-md px-1.5 py-0.5 hover:border-surface-300 dark:hover:border-surface-600 transition-colors"
                     title="Click to edit duration"
                   >
                     <Clock className="w-3 h-3" />
-                    {place.estimatedDuration} min
+                    {place.estimatedDuration ?? 60} min
                   </button>
                 )}
               </div>
@@ -188,16 +189,16 @@ export const PlaceItem: React.FC<PlaceItemProps> = ({ place }) => {
                 <select
                   value={place.dayIndex !== null ? place.dayIndex : ''}
                   onChange={handleDayChange}
-                  className={`text-xs font-semibold border rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500 appearance-none cursor-pointer pr-5 ${getBadgeColor(place.dayIndex)}`}
+                  className={`text-xs font-bold border rounded-md pl-1.5 pr-4 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary-500 appearance-none cursor-pointer text-center tracking-wide ${place.dayIndex === null ? 'bg-surface-100 dark:bg-surface-800 text-surface-500 dark:text-surface-400 border-surface-200 dark:border-surface-700' : getBadgeColor(place.dayIndex)}`}
                   title="Assign to day"
                 >
-                  <option value="">Unassigned</option>
+                  <option value="">{isSidebarExpanded ? 'Unassigned' : '-'}</option>
                   {Array.from({ length: days }).map((_, i) => (
-                    <option key={i} value={i}>Day {i + 1}</option>
+                    <option key={i} value={i}>{isSidebarExpanded ? 'Day' : 'D'}{i + 1}</option>
                   ))}
                 </select>
                 {place.pinnedToDay && (
-                  <Pin className="absolute right-1 top-1/2 -translate-y-1/2 w-3 h-3 text-current opacity-60 pointer-events-none" />
+                  <Pin className="absolute right-1 top-1/2 -translate-y-1/2 w-2.5 h-2.5 text-current opacity-60 pointer-events-none" />
                 )}
               </div>
 
@@ -220,16 +221,16 @@ export const PlaceItem: React.FC<PlaceItemProps> = ({ place }) => {
                 onChange={(e) => setDesc(e.target.value)}
                 onBlur={handleSave}
                 onKeyDown={handleKeyDown}
-                className="w-full text-sm text-surface-700 bg-surface-50 border border-primary-200 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none overflow-hidden"
+                className="w-full text-sm text-surface-700 dark:text-surface-300 bg-surface-50 dark:bg-surface-800 border border-primary-200 dark:border-primary-700 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none overflow-hidden"
                 rows={1}
               />
             ) : (
               <p
                 onClick={() => !isDragging && setIsEditing(true)}
-                className="text-sm text-surface-600 cursor-text hover:bg-surface-50 p-2 -mx-2 rounded-lg transition-colors border border-transparent hover:border-surface-200 line-clamp-2"
+                className="text-sm text-surface-600 dark:text-surface-300 cursor-text hover:bg-surface-50 dark:hover:bg-surface-700 p-2 -mx-2 rounded-lg transition-colors border border-transparent hover:border-surface-200 dark:hover:border-surface-600 line-clamp-2"
                 title="Click to edit"
               >
-                {place.description || <span className="text-surface-400 italic">Click to add description...</span>}
+                {place.description || <span className="text-surface-400 dark:text-surface-500 italic">Click to add description...</span>}
               </p>
             )}
           </div>
