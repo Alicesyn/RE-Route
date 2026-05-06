@@ -103,7 +103,8 @@ export const DailySchedule: React.FC = () => {
   // Calculate day total in minutes
   const [startH, startM] = dayStartTime.split(':').map(Number);
   const [endH, endM] = dayEndTime.split(':').map(Number);
-  const baseDayMinutes = (endH * 60 + endM) - (startH * 60 + startM);
+  let baseDayMinutes = (endH * 60 + endM) - (startH * 60 + startM);
+  if (baseDayMinutes < 0) baseDayMinutes += 24 * 60; // Handle overnight
 
   const scrollToDay = (dayIndex: number) => {
     const element = document.getElementById(`schedule-day-${dayIndex}`);
@@ -185,14 +186,20 @@ export const DailySchedule: React.FC = () => {
               const dayStartTotal = startH * 60 + startM;
               const effectiveStart = Math.max(dayStartTotal, arrivalTotal);
               currentTime = effectiveStart; // Day starts after flight + buffer
-              dayAvailableMinutes = (endH * 60 + endM) - effectiveStart;
+              
+              let available = (endH * 60 + endM) - effectiveStart;
+              if (available < 0) available += 24 * 60;
+              dayAvailableMinutes = available;
             }
             if (isLastDay && departureFlight) {
               const [depH, depM] = departureFlight.time.split(':').map(Number);
               const depTotal = depH * 60 + depM - departureFlight.buffer;
               const dayEndTotal = endH * 60 + endM;
               const effectiveEnd = Math.min(dayEndTotal, depTotal);
-              dayAvailableMinutes = effectiveEnd - (startH * 60 + startM);
+              
+              let available = effectiveEnd - (startH * 60 + startM);
+              if (available < 0) available += 24 * 60;
+              dayAvailableMinutes = available;
             }
           }
 

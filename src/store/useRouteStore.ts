@@ -230,13 +230,34 @@ export const useRouteStore = create<RouteState>()(
         )
       })),
 
-      unassignPlace: (placeId) => set((state) => ({
-        places: state.places.map(p =>
+      unassignPlace: (placeId) => set((state) => {
+        const place = state.places.find(p => p.id === placeId);
+        const dayIndex = place?.dayIndex;
+
+        const newPlaces = state.places.map(p =>
           p.id === placeId
             ? { ...p, dayIndex: null, orderInDay: null, pinnedToDay: false }
             : p
-        )
-      })),
+        );
+
+        let newRoutes = [...state.optimizedRoutes];
+        if (dayIndex !== null && dayIndex !== undefined) {
+          // Re-solve the day to remove the stop and update segments
+          const dayPlaces = newPlaces.filter(p => p.dayIndex === dayIndex);
+          const result = solveSingleDay(
+            dayPlaces,
+            state.hotels,
+            dayIndex,
+            state.travelMode,
+            (dayIndex === 0 && state.showFlights) ? state.arrivalFlight?.location : null,
+            (dayIndex === state.days - 1 && state.showFlights) ? state.departureFlight?.location : null
+          );
+          const idx = newRoutes.findIndex(r => r.day === dayIndex);
+          if (idx >= 0) newRoutes[idx] = result;
+        }
+
+        return { places: newPlaces, optimizedRoutes: newRoutes };
+      }),
 
       setHotelForDay: (dayIndex, hotel) => set((state) => {
         const existing = state.hotels.filter(h => h.dayIndex !== dayIndex);
