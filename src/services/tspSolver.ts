@@ -180,11 +180,20 @@ function buildDayRoute(
   manualOrder: boolean = false,
   manualSequence?: string[],
 ): DayRoute {
-  const endHotel = hotels.find((h) => h.dayIndex === dayIndex) || null;
-  const startHotel =
+  const endHotelRaw = hotels.find((h) => h.dayIndex === dayIndex) || null;
+  const startHotelRaw =
     dayIndex > 0
       ? hotels.find((h) => h.dayIndex === dayIndex - 1) || null
-      : endHotel;
+      : endHotelRaw;
+
+  // Sanitize locations to avoid "Null Island" (0,0) bug
+  const sanitize = (loc: any) =>
+    loc && loc.lat === 0 && loc.lng === 0 ? null : loc;
+
+  const startHotel = sanitize(startHotelRaw);
+  const endHotel = sanitize(endHotelRaw);
+  const arrivalLoc = sanitize(arrivalLocation);
+  const departureLoc = sanitize(departureLocation);
 
   let optimizedPlaces = manualOrder
     ? dayPlaces
@@ -193,29 +202,54 @@ function buildDayRoute(
   let dayDist = 0;
   let points: (Place | Hotel)[] = [];
 
-  if (manualSequence && manualSequence.length > 0) {
-    // Map IDs to objects
-    points = manualSequence
-      .map((id) => {
-        if (id === "arrival") return arrivalLocation;
-        if (id === "start-hotel") return startHotel;
-        if (id === "end-hotel") return endHotel;
-        if (id === "departure") return departureLocation;
-        return dayPlaces.find((p) => p.id === id);
-      })
-      .filter(Boolean) as (Place | Hotel)[];
+  const rawPoints: (Place | Hotel)[] = [];
+  const ids = manualSequence && manualSequence.length > 0 
+    ? manualSequence 
+    : (() => {
+        const defaultIds: string[] = [];
+        if (arrivalLocation && dayIndex === 0) defaultIds.push("arrival");
+        if (startHotel) defaultIds.push("start-hotel");
+        optimizedPlaces.forEach((p) => defaultIds.push(p.id));
+        if (endHotel) defaultIds.push("end-hotel");
+        if (departureLocation && dayIndex === (hotels.length > 0 ? hotels.length - 1 : 0))
+          defaultIds.push("departure");
+        return defaultIds;
+      })();
 
-    // If manual sequence is provided, stops should be extracted in that order
+  ids.forEach((id) => {
+    let loc = null;
+    if (id === "arrival") loc = arrivalLoc;
+    else if (id === "start-hotel") loc = startHotel;
+    else if (id === "end-hotel") loc = endHotel;
+    else if (id === "departure") loc = departureLoc;
+    else loc = dayPlaces.find((p) => p.id === id);
+    rawPoints.push(loc);
+  });
+
+  // Two-pass fallback to ensure every point has a valid coordinate
+  const processedPoints: (Place | Hotel)[] = [];
+  const firstValid = rawPoints.find(p => p && !(p.lat === 0 && p.lng === 0));
+
+  rawPoints.forEach((loc, idx) => {
+    let current = loc;
+    if (!current || (current.lat === 0 && current.lng === 0)) {
+      if (idx > 0 && processedPoints[idx - 1]) {
+        current = { ...processedPoints[idx - 1], name: "Unknown" } as any;
+      } else if (firstValid) {
+        current = { ...firstValid, name: "Unknown" } as any;
+      } else {
+        current = { name: "Unknown", lat: 0, lng: 0 } as any;
+      }
+    }
+    processedPoints.push(current!);
+  });
+
+  points = processedPoints;
+
+  if (manualSequence && manualSequence.length > 0) {
     optimizedPlaces = points.filter(
       (p) => (p as Place).id !== undefined,
     ) as Place[];
-  } else {
-    // Default structure: Arrival -> StartHotel -> Stops -> EndHotel -> Departure
-    if (arrivalLocation) points.push(arrivalLocation);
-    if (startHotel) points.push(startHotel);
-    points.push(...optimizedPlaces);
-    if (endHotel) points.push(endHotel);
-    if (departureLocation) points.push(departureLocation);
   }
 
   const segments: { distance: number; time: number; travelMode: TravelMode }[] =
