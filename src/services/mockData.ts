@@ -56,6 +56,15 @@ export const MOCK_PLACES: Omit<
     descriptionSource: "mock",
     category: "landmark",
     estimatedDuration: 60,
+    openingHours: [
+      "Monday: 10:00 AM – 10:00 PM",
+      "Tuesday: 10:00 AM – 10:00 PM",
+      "Wednesday: 10:00 AM – 10:00 PM",
+      "Thursday: 10:00 AM – 10:00 PM",
+      "Friday: 9:00 AM – 12:00 AM",
+      "Saturday: 9:00 AM – 12:00 AM",
+      "Sunday: 9:00 AM – 11:00 PM"
+    ],
   },
   {
     id: "m4",
@@ -79,6 +88,15 @@ export const MOCK_PLACES: Omit<
     descriptionSource: "mock",
     category: "museum",
     estimatedDuration: 180,
+    openingHours: [
+      "Monday: Closed",
+      "Tuesday: 10:00 AM – 5:00 PM",
+      "Wednesday: 10:00 AM – 5:00 PM",
+      "Thursday: 10:00 AM – 5:00 PM",
+      "Friday: 10:00 AM – 9:00 PM",
+      "Saturday: 10:00 AM – 9:00 PM",
+      "Sunday: 10:00 AM – 5:00 PM"
+    ],
   },
   {
     id: "m6",

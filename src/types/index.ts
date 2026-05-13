@@ -25,6 +25,7 @@ export interface Place {
   orderInDay: number | null;
   pinnedToDay: boolean; // true if user manually assigned to a day; optimizer won't move pinned places
   notes?: string;
+  openingHours?: string[]; // e.g. ["Monday: 9:00 AM – 5:00 PM", ...]
 }
 
 export interface Hotel {

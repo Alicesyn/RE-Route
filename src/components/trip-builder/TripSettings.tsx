@@ -24,6 +24,7 @@ import { TravelMode } from "../../types";
 import { MOCK_HOTELS } from "../../services/mockData";
 import { HotelSearchInput } from "./HotelSearchInput";
 import { format, addDays, parseISO } from "date-fns";
+import { DatePicker } from "../ui/DatePicker";
 
 export const TripSettings: React.FC = () => {
   const {
@@ -54,11 +55,13 @@ export const TripSettings: React.FC = () => {
 
   const [daysInput, setDaysInput] = useState(days.toString());
   const [sameHotel, setSameHotel] = useState(true);
+  const [openPicker, setOpenPicker] = useState<"start" | "end" | null>(null);
 
   // Sync internal input state with store days
   useEffect(() => {
     setDaysInput(days.toString());
   }, [days]);
+
 
   const handleDaysChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setDaysInput(e.target.value);
@@ -238,40 +241,36 @@ export const TripSettings: React.FC = () => {
               </div>
             </div>
           ) : (
+            <>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-surface-500 uppercase mb-2">
-                  Start Date
-                </label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full bg-surface-50 dark:bg-surface-900 border border-surface-200 dark:border-surface-700 text-surface-900 dark:text-white text-sm rounded-lg pl-10 p-2.5 outline-none"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-surface-500 uppercase mb-2">
-                  End Date
-                </label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
-                  <input
-                    type="date"
-                    value={endDate}
-                    min={startDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full bg-surface-50 dark:bg-surface-900 border border-surface-200 dark:border-surface-700 text-surface-900 dark:text-white text-sm rounded-lg pl-10 p-2.5 outline-none"
-                  />
-                </div>
-                <p className="mt-2 text-[10px] font-bold text-surface-400 uppercase text-right">
-                  Total: <span className="text-primary-600">{days} days</span>
-                </p>
-              </div>
+              <DatePicker
+                label="Start Date"
+                value={startDate}
+                onChange={(val) => {
+                  setStartDate(val);
+                  // Auto-switch to end date picker
+                  setOpenPicker("end");
+                }}
+                isOpen={openPicker === "start"}
+                onOpenChange={(open) => setOpenPicker(open ? "start" : null)}
+              />
+              <DatePicker
+                label="End Date"
+                value={endDate}
+                min={startDate}
+                onChange={(val) => {
+                  setEndDate(val);
+                  setOpenPicker(null);
+                }}
+                isOpen={openPicker === "end"}
+                onOpenChange={(open) => setOpenPicker(open ? "end" : null)}
+                highlight={openPicker === "end"}
+              />
             </div>
+            <p className="mt-2 text-[10px] font-bold text-surface-400 uppercase text-right">
+              Total: <span className="text-primary-600">{days} days</span>
+            </p>
+            </>
           )}
         </div>
       </div>

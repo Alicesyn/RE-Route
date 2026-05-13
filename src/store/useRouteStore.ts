@@ -180,10 +180,12 @@ export const useRouteStore = create<RouteState>()(
       setStartDate: (startDate) =>
         set((state) => {
           if (state.dateMode === "fixed") {
-            const days =
-              differenceInDays(parseISO(state.endDate), parseISO(startDate)) +
-              1;
-            return { startDate, days: Math.max(1, days) };
+            let endDate = state.endDate;
+            if (parseISO(startDate) > parseISO(state.endDate)) {
+              endDate = startDate;
+            }
+            const days = differenceInDays(parseISO(endDate), parseISO(startDate)) + 1;
+            return { startDate, endDate, days: Math.max(1, days) };
           } else {
             const endDate = format(
               addDays(parseISO(startDate), state.days - 1),

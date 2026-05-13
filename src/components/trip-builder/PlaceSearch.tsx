@@ -6,10 +6,11 @@ import {
   Loader2,
   AlertCircle,
   FileText,
+  Clock,
 } from "lucide-react";
 import { useRouteStore } from "../../store/useRouteStore";
 import { MOCK_PLACES } from "../../services/mockData";
-import { searchPlaces, MapsPlace } from "../../services/mapsService";
+import { searchPlaces } from "../../services/mapsService";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   getCategoryEmoji,
@@ -97,6 +98,7 @@ export const PlaceSearch: React.FC = () => {
         estimatedDuration,
         description: place.description || "",
         descriptionSource: appMode === "real" ? "user" : "mock",
+        openingHours: place.openingHours || [],
       },
       selectedDay !== null ? selectedDay : undefined,
     );
@@ -238,6 +240,16 @@ export const PlaceSearch: React.FC = () => {
                     <p className="text-[11px] text-surface-500 dark:text-surface-400 truncate">
                       {place.address}
                     </p>
+                    {place.openingHours && place.openingHours.length > 0 && (
+                      <div 
+                        className="inline-flex items-center gap-1 mt-0.5 text-[10px] text-surface-400 dark:text-surface-500 cursor-help"
+                        title={place.openingHours.join("\n")}
+                        onClick={(e) => e.stopPropagation()} // Prevent adding if they just want to hover, though hover works regardless
+                      >
+                        <Clock className="w-3 h-3" />
+                        <span>View Hours</span>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">

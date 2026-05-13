@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Trash2, MapPin, Pin, Clock } from "lucide-react";
+import { GripVertical, Trash2, MapPin, Pin, Clock, Timer } from "lucide-react";
 import { Place, PlaceCategory } from "../../types";
 import { useRouteStore } from "../../store/useRouteStore";
 import {
@@ -173,7 +173,7 @@ export const PlaceItem: React.FC<PlaceItemProps> = ({ place }) => {
                 {/* Duration badge (click to edit) */}
                 {isEditingDuration ? (
                   <div className="flex items-center gap-1">
-                    <Clock className="w-3 h-3 text-surface-400 dark:text-surface-500" />
+                    <Timer className="w-3 h-3 text-surface-400 dark:text-surface-500" />
                     <input
                       ref={durationRef}
                       type="number"
@@ -201,9 +201,20 @@ export const PlaceItem: React.FC<PlaceItemProps> = ({ place }) => {
                     className="flex items-center gap-1 text-xs font-medium text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-200 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-md px-1.5 py-0.5 hover:border-surface-300 dark:hover:border-surface-600 transition-colors"
                     title="Click to edit duration"
                   >
-                    <Clock className="w-3 h-3" />
+                    <Timer className="w-3 h-3" />
                     {place.estimatedDuration ?? 60} min
                   </button>
+                )}
+
+                {/* Opening Hours badge */}
+                {place.openingHours && place.openingHours.length > 0 && (
+                  <div
+                    className="flex items-center gap-1 text-[10px] font-medium text-surface-500 dark:text-surface-400 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-md px-1.5 py-0.5 cursor-help"
+                    title={place.openingHours.join("\n")}
+                  >
+                    <Clock className="w-3 h-3" />
+                    Hours
+                  </div>
                 )}
               </div>
             </div>

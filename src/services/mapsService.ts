@@ -23,6 +23,7 @@ export interface MapsPlace {
   lat: number;
   lng: number;
   types: string[];
+  openingHours?: string[];
 }
 
 export const searchPlaces = async (query: string): Promise<MapsPlace[]> => {
@@ -34,9 +35,6 @@ export const searchPlaces = async (query: string): Promise<MapsPlace[]> => {
   }
 
   try {
-    // Note: In a real production app, we would use the Google Maps JS SDK to avoid CORS.
-    // For this implementation, we'll use a fetch to the Places API (New) via a CORS-friendly approach or assume a proxy/backend if needed.
-    // However, since we are in a local dev environment, we will use the fetch approach.
     const response = await fetch(
       `https://places.googleapis.com/v1/places:searchText`,
       {
@@ -45,7 +43,7 @@ export const searchPlaces = async (query: string): Promise<MapsPlace[]> => {
           "Content-Type": "application/json",
           "X-Goog-Api-Key": API_KEY,
           "X-Goog-FieldMask":
-            "places.id,places.displayName,places.formattedAddress,places.location,places.types",
+            "places.id,places.displayName,places.formattedAddress,places.location,places.types,places.regularOpeningHours",
         },
         body: JSON.stringify({ textQuery: query }),
       },
@@ -63,6 +61,7 @@ export const searchPlaces = async (query: string): Promise<MapsPlace[]> => {
       lat: p.location.latitude,
       lng: p.location.longitude,
       types: p.types || [],
+      openingHours: p.regularOpeningHours?.weekdayDescriptions || [],
     }));
 
     saveToCache(query, results);

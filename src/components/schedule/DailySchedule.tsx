@@ -13,10 +13,12 @@ import {
   PlaneTakeoff,
   PlaneLanding,
   GripVertical,
+  AlertTriangle,
 } from "lucide-react";
 import { TravelMode, RouteSegment } from "../../types";
 import { getCategoryEmoji } from "../../utils/categoryUtils";
 import { format, addDays, parseISO } from "date-fns";
+import { checkTimeConflict } from "../../utils/timeUtils";
 import {
   DndContext,
   closestCenter,
@@ -102,6 +104,8 @@ interface SortableStopProps {
   route: any;
   dayIndex: number;
   currentTime: number;
+  dateMode: "fixed" | "duration";
+  currentDate: Date;
 }
 
 const SortableStop: React.FC<SortableStopProps> = ({
@@ -110,7 +114,14 @@ const SortableStop: React.FC<SortableStopProps> = ({
   isFirst,
   isLast,
   unassignPlace,
+  dateMode,
+  currentDate,
 }) => {
+  const timeConflict = 
+    dateMode === "fixed" 
+      ? checkTimeConflict(stopArrivalTime, stop.estimatedDuration || 60, stop.openingHours, currentDate)
+      : { hasConflict: false };
+      
   const {
     attributes,
     listeners,
@@ -166,9 +177,16 @@ const SortableStop: React.FC<SortableStopProps> = ({
             <h4 className="text-sm font-bold text-surface-900 dark:text-white truncate group-hover:text-primary-600 transition-colors pr-8">
               {stop.name}
             </h4>
-            <span className="text-[10px] font-bold font-mono text-surface-400 shrink-0">
-              {formatTime(stopArrivalTime)}
-            </span>
+            <div className="flex items-center gap-1.5 shrink-0">
+              {timeConflict.hasConflict && (
+                <div title={`Hours Conflict: ${timeConflict.reason}`}>
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                </div>
+              )}
+              <span className={`text-[10px] font-bold font-mono ${timeConflict.hasConflict ? "text-amber-500" : "text-surface-400"}`}>
+                {formatTime(stopArrivalTime)}
+              </span>
+            </div>
 
             <button
               onClick={() => unassignPlace(stop.id)}
@@ -179,9 +197,18 @@ const SortableStop: React.FC<SortableStopProps> = ({
             </button>
           </div>
 
-          {stop.description && (
-            <div className="mt-1">
-              <ExpandableDescription text={stop.description} />
+          {(stop.description || (stop.openingHours && stop.openingHours.length > 0)) && (
+            <div className="mt-1 space-y-1">
+              {stop.description && <ExpandableDescription text={stop.description} />}
+              {stop.openingHours && stop.openingHours.length > 0 && (
+                <div 
+                  className="inline-flex items-center gap-1 text-[10px] text-surface-400 dark:text-surface-500 cursor-help"
+                  title={stop.openingHours.join("\n")}
+                >
+                  <Clock className="w-3 h-3" />
+                  <span>View Hours</span>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -727,6 +754,8 @@ export const DailySchedule: React.FC = () => {
                                     route={route}
                                     dayIndex={i}
                                     currentTime={currentTime}
+                                    dateMode={dateMode}
+                                    currentDate={currentDate}
                                   />
                                 );
                                 itemDuration = stop.estimatedDuration || 0;
