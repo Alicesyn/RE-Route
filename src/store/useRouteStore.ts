@@ -109,12 +109,13 @@ interface RouteState extends ModeData {
   // Trips
   saveTrip: () => void;
   loadTrip: (id: string) => void;
+  deleteTrip: (id: string) => void;
 }
 
 export const useRouteStore = create<RouteState>()(
   persist(
     (set, get) => ({
-      title: "My RE:Route Trip",
+      title: "RE:ROUTE",
       days: 3,
       startDate: format(new Date(), "yyyy-MM-dd"),
       endDate: format(addDays(new Date(), 2), "yyyy-MM-dd"),
@@ -531,6 +532,12 @@ export const useRouteStore = create<RouteState>()(
             optimizedRoutes: trip.optimizedRoutes,
           };
         }),
+
+
+      deleteTrip: (id) =>
+        set((state) => ({
+          savedTrips: state.savedTrips.filter((t) => t.id !== id),
+        })),
     }),
     {
       name: "reroute-storage",

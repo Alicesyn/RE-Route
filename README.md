@@ -1,8 +1,8 @@
-# 🗺️ RE:Route - Travel Itinerary Optimizer
+# 🗺️ RE:ROUTE - Travel Itinerary Optimizer
 
-RE:Route is a modern travel planning application designed to help travelers build, optimize, and share their itineraries. It features a powerful route optimization engine that solves the "Traveling Salesperson Problem" (TSP) to minimize travel time between destinations.
+RE:ROUTE is a modern travel planning application designed to help travelers build, optimize, and share their itineraries. It features a powerful route optimization engine that solves the "Traveling Salesperson Problem" (TSP) to minimize travel time between destinations.
 
-![RE:Route Preview](https://via.placeholder.com/1200x600?text=RE:Route+Travel+Itinerary+Optimizer)
+![RE:ROUTE Preview](https://via.placeholder.com/1200x600?text=RE:ROUTE+Travel+Itinerary+Optimizer)
 
 ## ✨ Features
 
