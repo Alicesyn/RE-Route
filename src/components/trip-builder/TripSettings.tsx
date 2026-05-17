@@ -1,13 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
-  Settings,
-  X,
-  Calendar,
   Clock,
-  MapPin,
   Building2,
-  ChevronDown,
-  Check,
   Plane,
   Plus,
   Minus,
@@ -23,7 +17,7 @@ import { useRouteStore } from "../../store/useRouteStore";
 import { TravelMode } from "../../types";
 import { MOCK_HOTELS } from "../../services/mockData";
 import { HotelSearchInput } from "./HotelSearchInput";
-import { format, addDays, parseISO } from "date-fns";
+
 import { DatePicker } from "../ui/DatePicker";
 
 export const TripSettings: React.FC = () => {
@@ -134,7 +128,7 @@ export const TripSettings: React.FC = () => {
     ? MOCK_HOTELS.findIndex((h) => h.name === currentHotel.name)
     : "";
 
-  const displayEndDate = format(parseISO(endDate), "MMM d, yyyy");
+
 
   return (
     <div className="space-y-6 transition-colors">

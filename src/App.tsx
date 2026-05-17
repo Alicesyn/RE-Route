@@ -7,7 +7,7 @@ import { DailySchedule } from "./components/schedule/DailySchedule";
 import { useRouteStore } from "./store/useRouteStore";
 import { solveTSP } from "./services/tspSolver";
 import { Wand2, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { summarizePlace } from "./services/aiService";
 
 function App() {
@@ -151,16 +151,6 @@ function App() {
               <div className="p-5 flex-1">
                 <TripSettings />
               </div>
-              <div className="p-4 bg-surface-50 dark:bg-surface-900 border-t border-surface-200 dark:border-surface-700">
-                <button
-                  onClick={handleOptimize}
-                  disabled={places.length === 0}
-                  className="btn-primary w-full flex items-center justify-center gap-2 group"
-                >
-                  <Wand2 className="w-5 h-5 group-hover:rotate-12 transition-transform" />
-                  Optimize Route
-                </button>
-              </div>
             </div>
 
             <div className="w-full lg:w-2/3 flex flex-col min-h-[400px] rounded-xl overflow-hidden shadow-sm border border-surface-200 dark:border-surface-700 relative">
@@ -232,6 +222,16 @@ function App() {
               )}
             </div>
           </div>
+
+          {/* Optimize Button */}
+          <button
+            onClick={handleOptimize}
+            disabled={places.length === 0}
+            className="btn-primary w-full flex items-center justify-center gap-2 group py-4 text-lg rounded-xl"
+          >
+            <Wand2 className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+            Optimize Route
+          </button>
 
           {/* Bottom Row: Daily Schedule */}
           {optimizedRoutes.length > 0 && (

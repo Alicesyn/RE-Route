@@ -12,7 +12,7 @@ import {
   FileText,
 } from "lucide-react";
 
-import { ImportModal } from "./ImportModal";
+import { ImportModal } from "../trip-builder/ImportModal";
 import { LoadTripModal } from "./LoadTripModal";
 
 export const Header: React.FC = () => {

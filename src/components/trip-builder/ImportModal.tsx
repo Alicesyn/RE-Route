@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   AlertCircle,
   MapPin,
-  Check,
   Square,
   CheckSquare,
 } from "lucide-react";

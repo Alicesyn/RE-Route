@@ -207,11 +207,11 @@ function buildDayRoute(
     ? manualSequence 
     : (() => {
         const defaultIds: string[] = [];
-        if (arrivalLoc) defaultIds.push("arrival");
+        if (arrivalLocation) defaultIds.push("arrival");
         if (startHotel) defaultIds.push("start-hotel");
         optimizedPlaces.forEach((p) => defaultIds.push(p.id));
         if (endHotel) defaultIds.push("end-hotel");
-        if (departureLoc) defaultIds.push("departure");
+        if (departureLocation) defaultIds.push("departure");
         return defaultIds;
       })();
 

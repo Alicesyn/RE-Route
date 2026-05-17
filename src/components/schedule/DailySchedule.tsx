@@ -466,7 +466,7 @@ export const DailySchedule: React.FC = () => {
           </div>
 
           <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-            {optimizedRoutes.map((route, i) => {
+            {optimizedRoutes.map((_, i) => {
               const btnDate = addDays(parseISO(startDate), i);
               return (
                 <button
@@ -659,6 +659,7 @@ export const DailySchedule: React.FC = () => {
                                 ids.push("departure");
                               return ids;
                             })();
+
 
                           return items.map((itemId, idx) => {
                             const isFirst = idx === 0;
