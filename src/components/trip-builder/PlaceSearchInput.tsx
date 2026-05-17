@@ -35,24 +35,27 @@ export const PlaceSearchInput: React.FC<PlaceSearchInputProps> = ({
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    // Only search when the user is actively typing, not after a selection
+    if (!isEditing) return;
+
     if (appMode !== "real") {
       // Simple mock for airports/stations
       const mockPlaces = [
         {
           id: "m1",
-          name: "International Airport",
-          address: "123 Terminal Blvd",
+          name: "John F. Kennedy International Airport",
+          address: "Queens, NY 11430",
           category: "transport",
-          lat: 0,
-          lng: 0,
+          lat: 40.6413,
+          lng: -73.7781,
         },
         {
           id: "m2",
-          name: "Central Station",
-          address: "Main St",
+          name: "Penn Station",
+          address: "234 W 31st St, New York, NY",
           category: "transport",
-          lat: 0,
-          lng: 0,
+          lat: 40.7505,
+          lng: -73.9934,
         },
       ];
       if (query.length > 0) {
@@ -89,7 +92,7 @@ export const PlaceSearchInput: React.FC<PlaceSearchInputProps> = ({
         setIsLoading(false);
       }
     }, 500);
-  }, [query, appMode]);
+  }, [query, appMode, isEditing]);
 
   const IconComponent = () => {
     if (icon === "airport")
@@ -156,6 +159,8 @@ export const PlaceSearchInput: React.FC<PlaceSearchInputProps> = ({
                   setQuery(place.name);
                   setIsOpen(false);
                   setIsEditing(false);
+                  setResults([]);
+                  inputRef.current?.blur();
                 }}
                 className="w-full flex items-start gap-3 p-3 hover:bg-surface-50 dark:hover:bg-surface-700 transition-colors text-left border-b border-surface-50 dark:border-surface-700 last:border-none"
               >
