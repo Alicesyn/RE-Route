@@ -16,7 +16,7 @@ import { ImportModal } from "../trip-builder/ImportModal";
 import { LoadTripModal } from "./LoadTripModal";
 
 export const Header: React.FC = () => {
-  const { appMode, setAppMode, title, saveTrip, places, theme, setTheme } =
+  const { appMode, setAppMode, title, setTitle, saveTrip, places, theme, setTheme } =
     useRouteStore();
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isLoadOpen, setIsLoadOpen] = useState(false);
@@ -49,9 +49,13 @@ export const Header: React.FC = () => {
         <div className="bg-primary-500 p-2 rounded-lg">
           <Map className="text-white w-6 h-6" />
         </div>
-        <h1 className="text-2xl font-bold text-surface-900 dark:text-white tracking-tight">
-          {title}
-        </h1>
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          className="text-2xl font-bold text-surface-900 dark:text-white tracking-tight bg-transparent border-none outline-none focus:ring-0 focus:border-b focus:border-primary-500 transition-all p-0 w-64"
+          placeholder="Trip Title..."
+        />
       </div>
 
       <div className="flex items-center gap-4">

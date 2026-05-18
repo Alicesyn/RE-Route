@@ -18,6 +18,9 @@ function clusterPlaces(
   days: number,
   travelMode: TravelMode,
   dailyBudgetMin: number = DEFAULT_DAILY_BUDGET_MIN,
+  strictBudget: boolean = false,
+  arrivalLocation?: Place | null,
+  departureLocation?: Place | null,
 ): Place[] {
   const pinned = places.filter((p) => p.dayIndex !== null && p.pinnedToDay);
   const unassigned = places.filter(
@@ -49,12 +52,40 @@ function clusterPlaces(
     }
   }
 
-  // Reset non-pinned places
-  const toAssign = unassigned.map((p) => ({
-    ...p,
-    dayIndex: null as number | null,
-    orderInDay: null as number | null,
-  }));
+  const validAnchors = [...hotels];
+  if (arrivalLocation) validAnchors.push({ ...arrivalLocation, dayIndex: 0 } as any);
+  if (departureLocation) validAnchors.push({ ...departureLocation, dayIndex: days - 1 } as any);
+
+  // Filter out 500km unfeasible ones
+  const toAssign: Place[] = [];
+  const rejectedUnassigned: Place[] = [];
+
+  for (const p of unassigned) {
+    if (validAnchors.length > 0) {
+      let minDist = Infinity;
+      for (const anchor of validAnchors) {
+        const d = getDistance(p.lat, p.lng, anchor.lat, anchor.lng);
+        if (d < minDist) minDist = d;
+      }
+      if (minDist > 500) { // 500 km
+        rejectedUnassigned.push({
+          ...p,
+          dayIndex: null,
+          orderInDay: null,
+          unfeasibleReason: "Over 500km from any hotel or flight.",
+        });
+        continue;
+      }
+    }
+    
+    // Clear out old unfeasible reasons since it passed the distance check
+    toAssign.push({
+      ...p,
+      dayIndex: null,
+      orderInDay: null,
+      unfeasibleReason: undefined,
+    });
+  }
 
   // Sort by longest duration first (greedy: schedule big items first for better packing)
   toAssign.sort(
@@ -80,24 +111,34 @@ function clusterPlaces(
       const remaining = dailyBudgetMin - totalIfAdded;
 
       if (remaining > maxRemaining) {
-        maxRemaining = remaining;
-        bestDay = d;
+        if (!strictBudget || remaining >= 0) {
+          maxRemaining = remaining;
+          bestDay = d;
+        }
       }
     }
 
-    place.dayIndex = bestDay;
+    if (bestDay !== -1) {
+      place.dayIndex = bestDay;
 
-    // Update time used
-    const hotel = hotels.find((h) => h.dayIndex === bestDay);
-    let travelMin = 0;
-    if (hotel) {
-      const dist = getDistance(place.lat, place.lng, hotel.lat, hotel.lng);
-      travelMin = estimateTime(dist, travelMode) / 60;
+      // Update time used
+      const hotel = hotels.find((h) => h.dayIndex === bestDay);
+      let travelMin = 0;
+      if (hotel) {
+        const dist = getDistance(place.lat, place.lng, hotel.lat, hotel.lng);
+        travelMin = estimateTime(dist, travelMode) / 60;
+      }
+      dayTimeUsed[bestDay] += (place.estimatedDuration ?? 60) + travelMin;
+    } else {
+      place.dayIndex = null;
+      place.unfeasibleReason = "Exceeds daily time budget.";
+      rejectedUnassigned.push(place);
     }
-    dayTimeUsed[bestDay] += (place.estimatedDuration ?? 60) + travelMin;
   }
 
-  return [...pinned, ...toAssign];
+  const successfullyAssigned = toAssign.filter(p => p.dayIndex !== null);
+
+  return [...pinned, ...successfullyAssigned, ...rejectedUnassigned];
 }
 
 // 2-Opt Algorithm for a single day's route (Start -> Stops -> End)
@@ -317,6 +358,7 @@ export function solveTSP(
   days: number,
   travelMode: TravelMode,
   dailyBudgetMin: number = DEFAULT_DAILY_BUDGET_MIN,
+  strictBudget: boolean = false,
   arrivalLocation?: Place | null,
   departureLocation?: Place | null,
 ): OptimizationResult {
@@ -329,6 +371,9 @@ export function solveTSP(
     days,
     travelMode,
     dailyBudgetMin,
+    strictBudget,
+    arrivalLocation,
+    departureLocation,
   );
 
   let totalTripDistance = 0;
@@ -358,5 +403,6 @@ export function solveTSP(
     days: dayRoutes,
     totalDistance: totalTripDistance,
     totalTime: totalTripTime,
+    unassignedPlaces: clusteredPlaces.filter((p) => p.dayIndex === null),
   };
 }

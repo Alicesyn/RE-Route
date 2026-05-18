@@ -26,7 +26,24 @@ interface ImportResult {
   selected: boolean;
   error?: string;
   isDuplicate?: boolean;
+  isOutlier?: boolean;
+  isFar?: boolean;
 }
+
+// Haversine distance in km
+const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+  const R = 6371; // Radius of the earth in km
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
 
 type ModalState = "input" | "searching" | "review" | "success";
 
@@ -42,7 +59,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({
     total: 0,
     currentName: "",
   });
-  const { addPlace, appMode, places, addMissingPlace } = useRouteStore();
+  const { addPlace, appMode, places, hotels, addMissingPlace } = useRouteStore();
 
   // Reset state when modal is closed
   useEffect(() => {
@@ -76,6 +93,18 @@ export const ImportModal: React.FC<ImportModalProps> = ({
 
     const searchResults: ImportResult[] = [];
 
+    // Calculate location bias from existing anchors
+    const anchors = [...places, ...hotels];
+    let biasLocation: { lat: number; lng: number } | undefined = undefined;
+    if (anchors.length > 0) {
+      const lats = anchors.map((l) => l.lat).sort((a, b) => a - b);
+      const lngs = anchors.map((l) => l.lng).sort((a, b) => a - b);
+      biasLocation = {
+        lat: lats[Math.floor(lats.length / 2)],
+        lng: lngs[Math.floor(lngs.length / 2)],
+      };
+    }
+
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       setProgress((prev) => ({ ...prev, current: i + 1, currentName: line }));
@@ -106,7 +135,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({
         let mapsResults: MapsPlace[] = [];
 
         if (appMode === "real") {
-          mapsResults = await searchPlaces(line);
+          mapsResults = await searchPlaces(line, biasLocation);
         } else {
           // Mock search logic
           mapsResults = MOCK_PLACES.filter((p) =>
@@ -161,22 +190,50 @@ export const ImportModal: React.FC<ImportModalProps> = ({
       }
     }
 
+    // Outlier Detection (Check distance from median of all places)
+    const allMatches = searchResults.map((r) => r.match).filter(Boolean) as MapsPlace[];
+    const allLocations = [...allMatches, ...places]; // Anchor with existing places
+
+    if (allLocations.length > 0) {
+      const lats = allLocations.map((l) => l.lat).sort((a, b) => a - b);
+      const lngs = allLocations.map((l) => l.lng).sort((a, b) => a - b);
+      const medianLat = lats[Math.floor(lats.length / 2)];
+      const medianLng = lngs[Math.floor(lngs.length / 2)];
+
+      searchResults.forEach((res) => {
+        if (res.match && !res.isDuplicate) {
+          const dist = getDistance(
+            res.match.lat,
+            res.match.lng,
+            medianLat,
+            medianLng,
+          );
+          if (dist > 1000) {
+            res.isOutlier = true;
+            res.selected = false; // Auto unselect outliers
+          } else if (dist > 200) {
+            res.isFar = true;
+          }
+        }
+      });
+    }
+
     setResults(searchResults);
     setModalState("review");
   };
 
   const handleFinalize = () => {
     const selectedResults = results.filter((r) => r.selected && r.match);
-    const failedResults = results.filter((r) => !r.match);
+    const failedResults = results.filter((r) => !r.match || (!r.selected && !r.isDuplicate));
 
-    // Save failed ones to store
+    // Save failed or intentionally unselected ones to store
     failedResults.forEach((res) => {
       addMissingPlace(res.query);
     });
 
     selectedResults.forEach((res) => {
       const bestMatch = res.match!;
-      const category = autoCategorize(bestMatch.name, "");
+      const category = autoCategorize(bestMatch.name, "", bestMatch.types);
       const estimatedDuration = getDefaultDuration(category);
 
       addPlace({
@@ -361,6 +418,16 @@ export const ImportModal: React.FC<ImportModalProps> = ({
                                   {res.isDuplicate && (
                                     <span className="shrink-0 text-[9px] font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-800">
                                       ALREADY ADDED
+                                    </span>
+                                  )}
+                                  {res.isOutlier && (
+                                    <span className="shrink-0 text-[9px] font-bold bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-1.5 py-0.5 rounded border border-red-200 dark:border-red-800 flex items-center gap-1">
+                                      <AlertCircle className="w-3 h-3" /> OUTLIER
+                                    </span>
+                                  )}
+                                  {res.isFar && !res.isOutlier && (
+                                    <span className="shrink-0 text-[9px] font-bold bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 px-1.5 py-0.5 rounded border border-orange-200 dark:border-orange-800 flex items-center gap-1" title="Over 200km from trip center">
+                                      <AlertCircle className="w-3 h-3" /> FAR AWAY
                                     </span>
                                   )}
                                 </div>

@@ -29,7 +29,7 @@ export const PlaceSearch: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
-  const { addPlace, appMode, days, sidebarWidth } = useRouteStore();
+  const { addPlace, appMode, days, sidebarWidth, places, hotels } = useRouteStore();
   const isSidebarExpanded = sidebarWidth >= 450;
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -63,7 +63,19 @@ export const PlaceSearch: React.FC = () => {
 
     debounceTimerRef.current = setTimeout(async () => {
       try {
-        const mapsResults = await searchPlaces(query);
+        // Calculate location bias from existing anchors
+        const anchors = [...places, ...hotels];
+        let biasLocation: { lat: number; lng: number } | undefined = undefined;
+        if (anchors.length > 0) {
+          const lats = anchors.map((l) => l.lat).sort((a, b) => a - b);
+          const lngs = anchors.map((l) => l.lng).sort((a, b) => a - b);
+          biasLocation = {
+            lat: lats[Math.floor(lats.length / 2)],
+            lng: lngs[Math.floor(lngs.length / 2)],
+          };
+        }
+
+        const mapsResults = await searchPlaces(query, biasLocation);
         setResults(mapsResults);
         setIsOpen(true);
       } catch (err) {
@@ -86,7 +98,7 @@ export const PlaceSearch: React.FC = () => {
   const handleAdd = (place: any) => {
     // For real places, we initialize them with limited data; Gemini will fill the rest
     const category =
-      place.category || autoCategorize(place.name, place.description || "");
+      place.category || autoCategorize(place.name, place.description || "", place.types || []);
     const estimatedDuration =
       place.estimatedDuration || getDefaultDuration(category);
 

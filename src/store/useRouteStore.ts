@@ -40,6 +40,7 @@ interface RouteState extends ModeData {
   } | null;
   travelMode: TravelMode;
   dailyBudget: number; // minutes (user-configurable)
+  strictBudget: boolean; // if true, won't assign places that exceed daily budget
   appMode: "real" | "mock" | "dropdown-mock";
   theme: "light" | "dark";
   optimizedRoutes: DayRoute[];
@@ -65,6 +66,7 @@ interface RouteState extends ModeData {
   ) => void;
   setTravelMode: (mode: TravelMode) => void;
   setDailyBudget: (minutes: number) => void;
+  setStrictBudget: (strict: boolean) => void;
   setAppMode: (mode: "real" | "mock" | "dropdown-mock") => void;
   setTheme: (theme: "light" | "dark") => void;
 
@@ -91,8 +93,9 @@ interface RouteState extends ModeData {
   unassignPlace: (placeId: string) => void;
 
   // Hotels
-  setHotelForDay: (dayIndex: number, hotel: Hotel) => void;
-  applyHotelToAllDays: (hotel: Hotel) => void;
+  setHotelForDay: (dayIndex: number, hotel: Hotel | null) => void;
+  applyHotelToAllDays: (hotel: Hotel | null) => void;
+  setHotelRange: (startDay: number, endDay: number, hotel: Hotel | null) => void;
 
   // Results
   setOptimizedRoutes: (routes: DayRoute[]) => void;
@@ -127,6 +130,7 @@ export const useRouteStore = create<RouteState>()(
       departureFlight: null,
       travelMode: "driving",
       dailyBudget: 720, // 12 hours default
+      strictBudget: true,
       places: [],
       hotels: [],
       missingPlaces: [],
@@ -209,6 +213,7 @@ export const useRouteStore = create<RouteState>()(
       setDepartureFlight: (departureFlight) => set({ departureFlight }),
       setTravelMode: (travelMode) => set({ travelMode }),
       setDailyBudget: (dailyBudget) => set({ dailyBudget }),
+      setStrictBudget: (strictBudget) => set({ strictBudget }),
       setAppMode: (newMode) =>
         set((state) => {
           const oldMode = state.appMode;
@@ -351,16 +356,33 @@ export const useRouteStore = create<RouteState>()(
       setHotelForDay: (dayIndex, hotel) =>
         set((state) => {
           const existing = state.hotels.filter((h) => h.dayIndex !== dayIndex);
-          return { hotels: [...existing, hotel] };
+          if (hotel) {
+            existing.push({ ...hotel, dayIndex });
+          }
+          return { hotels: existing.sort((a, b) => a.dayIndex - b.dayIndex) };
         }),
 
       applyHotelToAllDays: (hotel) =>
         set((state) => {
+          if (!hotel) return { hotels: [] };
           const hotels = Array.from({ length: state.days }).map((_, i) => ({
             ...hotel,
             dayIndex: i,
           }));
           return { hotels };
+        }),
+
+      setHotelRange: (startDay, endDay, hotel) =>
+        set((state) => {
+          let existing = state.hotels.filter(
+            (h) => h.dayIndex < startDay || h.dayIndex > endDay
+          );
+          if (hotel) {
+            for (let i = startDay; i <= endDay; i++) {
+              existing.push({ ...hotel, dayIndex: i });
+            }
+          }
+          return { hotels: existing.sort((a, b) => a.dayIndex - b.dayIndex) };
         }),
 
       setOptimizedRoutes: (optimizedRoutes) => set({ optimizedRoutes }),

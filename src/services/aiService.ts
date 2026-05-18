@@ -1,7 +1,7 @@
 import { PlaceCategory } from "../types";
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-const MODEL = "gemini-1.5-flash";
+const MODEL = "gemini-flash-latest";
 
 export interface AISummary {
   description: string;
@@ -13,6 +13,7 @@ export const summarizePlace = async (
   name: string,
   address: string,
   types: string[],
+  retries = 3
 ): Promise<AISummary> => {
   if (!API_KEY) {
     throw new Error("Gemini API Key is missing");
@@ -51,8 +52,17 @@ export const summarizePlace = async (
     );
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error?.message || "Failed to call Gemini API");
+      if (response.status === 429 && retries > 0) {
+        console.warn(`Gemini API rate limit hit. Retrying in 25s...`);
+        await new Promise((resolve) => setTimeout(resolve, 25000));
+        return summarizePlace(name, address, types, retries - 1);
+      }
+      let errorMessage = "Failed to call Gemini API";
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error?.message || errorMessage;
+      } catch (e) {}
+      throw new Error(errorMessage);
     }
 
     const data = await response.json();

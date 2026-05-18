@@ -19,6 +19,48 @@ import { MOCK_HOTELS } from "../../services/mockData";
 import { HotelSearchInput } from "./HotelSearchInput";
 
 import { DatePicker } from "../ui/DatePicker";
+import { format, addDays } from "date-fns";
+
+const deriveStaysFromHotels = (hotels: any[], totalDays: number, stayBoundaries: number[]) => {
+  if (totalDays === 0) return [];
+  const stays: { startDay: number; endDay: number; hotel: any; id: string }[] = [];
+  
+  let currentStart = 0;
+  let currentHotel = hotels.find((h) => h.dayIndex === 0) || null;
+
+  for (let i = 1; i < totalDays; i++) {
+    const dayHotel = hotels.find((h) => h.dayIndex === i) || null;
+    
+    const isSame =
+      !stayBoundaries.includes(i - 1) &&
+      ((!currentHotel && !dayHotel) ||
+      (currentHotel &&
+        dayHotel &&
+        currentHotel.name === dayHotel.name &&
+        currentHotel.lat === dayHotel.lat &&
+        currentHotel.lng === dayHotel.lng));
+
+    if (!isSame) {
+      stays.push({
+        id: `stay-${currentStart}-${i - 1}-${currentHotel?.name || "null"}`,
+        startDay: currentStart,
+        endDay: i - 1,
+        hotel: currentHotel,
+      });
+      currentStart = i;
+      currentHotel = dayHotel;
+    }
+  }
+
+  stays.push({
+    id: `stay-${currentStart}-${totalDays - 1}-${currentHotel?.name || "null"}`,
+    startDay: currentStart,
+    endDay: totalDays - 1,
+    hotel: currentHotel,
+  });
+
+  return stays;
+};
 
 export const TripSettings: React.FC = () => {
   const {
@@ -41,15 +83,16 @@ export const TripSettings: React.FC = () => {
     setDepartureFlight,
     travelMode,
     setTravelMode,
+    strictBudget,
+    setStrictBudget,
     hotels,
-    setHotelForDay,
-    applyHotelToAllDays,
+    setHotelRange,
     appMode,
   } = useRouteStore();
 
   const [daysInput, setDaysInput] = useState(days.toString());
-  const [sameHotel, setSameHotel] = useState(true);
   const [openPicker, setOpenPicker] = useState<"start" | "end" | null>(null);
+  const [stayBoundaries, setStayBoundaries] = useState<number[]>([]);
 
   // Sync internal input state with store days
   useEffect(() => {
@@ -92,41 +135,32 @@ export const TripSettings: React.FC = () => {
     setDepartureFlight({ ...current, ...updates });
   };
 
-  const handleHotelChange = (dayIndex: number, hotelData: any) => {
-    let hotel;
+  const handleHotelRangeChange = (startDay: number, endDay: number, hotelData: any) => {
+    let hotel = null;
 
-    if (appMode !== "real") {
-      const mockHotel =
-        typeof hotelData === "string"
-          ? MOCK_HOTELS[parseInt(hotelData)]
-          : hotelData;
-      if (mockHotel) {
-        hotel = { ...mockHotel, dayIndex };
-      }
-    } else {
-      hotel = {
-        name: hotelData.name,
-        address: hotelData.address,
-        lat: hotelData.lat,
-        lng: hotelData.lng,
-        dayIndex,
-      };
-    }
-
-    if (hotel) {
-      if (sameHotel) {
-        applyHotelToAllDays(hotel);
+    if (hotelData) {
+      if (appMode !== "real") {
+        const mockHotel =
+          typeof hotelData === "string"
+            ? MOCK_HOTELS[parseInt(hotelData)]
+            : hotelData;
+        if (mockHotel) {
+          hotel = { ...mockHotel };
+        }
       } else {
-        setHotelForDay(dayIndex, hotel);
+        hotel = {
+          name: hotelData.name,
+          address: hotelData.address,
+          lat: hotelData.lat,
+          lng: hotelData.lng,
+        };
       }
     }
+
+    setHotelRange(startDay, endDay, hotel);
   };
 
-  const currentHotel = hotels.find((h) => h.dayIndex === 0);
-  const currentHotelName = currentHotel ? currentHotel.name : "";
-  const currentHotelMockIndex = currentHotel
-    ? MOCK_HOTELS.findIndex((h) => h.name === currentHotel.name)
-    : "";
+  const stays = deriveStaysFromHotels(hotels, days, stayBoundaries);
 
 
 
@@ -301,6 +335,28 @@ export const TripSettings: React.FC = () => {
             />
           </div>
         </div>
+
+        {/* Strict Budget Toggle */}
+        <div className="mt-4 flex flex-col gap-1.5 p-3 bg-surface-100 dark:bg-surface-800/50 rounded-xl border border-surface-200 dark:border-surface-700/50">
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs font-semibold text-surface-900 dark:text-white flex items-center gap-1.5">
+              <Timer className="w-3.5 h-3.5 text-primary-500" />
+              Enforce Time Budget
+            </h4>
+            <button
+              onClick={() => setStrictBudget(!strictBudget)}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${strictBudget ? "bg-primary-500" : "bg-surface-300 dark:bg-surface-600"}`}
+            >
+              <span
+                className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm transition-transform`}
+                style={{ transform: strictBudget ? "translateX(18px)" : "translateX(4px)" }}
+              />
+            </button>
+          </div>
+          <p className="text-[10px] text-surface-500 dark:text-surface-400 pr-8">
+            If ON, the auto-scheduler will leave places Unassigned if they exceed your daily hours. If OFF, it will fit everything in.
+          </p>
+        </div>
       </div>
 
       <hr className="border-surface-100 dark:border-surface-700" />
@@ -453,68 +509,90 @@ export const TripSettings: React.FC = () => {
           <h3 className="text-sm font-semibold text-surface-900 dark:text-white uppercase tracking-wider">
             Stay & Lodging
           </h3>
-          <label className="flex items-center gap-2 cursor-pointer group">
-            <input
-              type="checkbox"
-              checked={sameHotel}
-              onChange={(e) => setSameHotel(e.target.checked)}
-              className="rounded border-surface-300 text-primary-600 focus:ring-primary-500"
-            />
-            <span className="text-[10px] font-bold text-surface-500 uppercase">
-              Same hotel every day
-            </span>
-          </label>
         </div>
 
         <div className="space-y-4">
-          {sameHotel ? (
-            <div className="relative flex items-center">
-              {appMode === "dropdown-mock" ? (
-                <>
-                  <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400 dark:text-surface-500" />
-                  <select
-                    value={currentHotelMockIndex}
-                    onChange={(e) => handleHotelChange(0, e.target.value)}
-                    className="w-full bg-surface-50 dark:bg-surface-900 border border-surface-200 dark:border-surface-700 text-surface-900 dark:text-white text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block pl-10 p-2.5 appearance-none"
+          {stays.map((stay, idx) => (
+            <div key={stay.id} className="relative flex flex-col gap-2 bg-surface-50 dark:bg-surface-800/50 p-3 rounded-xl border border-surface-200 dark:border-surface-700">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-surface-500 uppercase tracking-widest">Stay {idx + 1}</span>
+                {idx > 0 && (
+                  <button 
+                    onClick={() => {
+                      setHotelRange(stay.startDay, stay.endDay, stays[idx-1].hotel);
+                      setStayBoundaries(b => b.filter(x => x !== stay.startDay - 1));
+                    }}
+                    className="text-[10px] text-primary-600 hover:text-primary-700 font-bold uppercase transition-colors"
                   >
-                    <option value="" disabled>
-                      Select base hotel...
-                    </option>
-                    {MOCK_HOTELS.map((h, i) => (
-                      <option key={i} value={i}>
-                        {h.name}
+                    Merge with previous
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-sm font-bold text-surface-900 dark:text-white">
+                  {dateMode === "fixed" && startDate
+                    ? format(
+                        addDays(new Date(startDate + "T12:00:00"), stay.startDay),
+                        "MMM d",
+                      )
+                    : `Day ${stay.startDay + 1}`}
+                </span>
+                <span className="text-xs text-surface-400">to</span>
+                <select
+                  value={stay.endDay}
+                  onChange={(e) => {
+                    const newEndDay = parseInt(e.target.value);
+                    if (newEndDay > stay.endDay) {
+                      setHotelRange(stay.startDay, newEndDay, stay.hotel);
+                      setStayBoundaries((b) => [
+                        ...b.filter((x) => x < stay.startDay || x >= newEndDay),
+                        newEndDay,
+                      ]);
+                    } else if (newEndDay < stay.endDay) {
+                      setHotelRange(newEndDay + 1, stay.endDay, null);
+                      setStayBoundaries((b) => [...b, newEndDay]);
+                    }
+                  }}
+                  className="bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-700 text-surface-900 dark:text-white text-xs font-bold rounded-lg focus:ring-primary-500 focus:border-primary-500 py-1 pl-2 pr-6 appearance-none cursor-pointer"
+                >
+                  {Array.from({ length: days - stay.startDay }).map((_, i) => {
+                    const val = stay.startDay + i;
+                    return (
+                      <option key={val} value={val}>
+                        {dateMode === "fixed" && startDate
+                          ? format(
+                              addDays(new Date(startDate + "T12:00:00"), val),
+                              "MMM d",
+                            )
+                          : `Day ${val + 1}`}
                       </option>
-                    ))}
-                  </select>
-                </>
-              ) : (
-                <HotelSearchInput
-                  onSelect={(hotel) => handleHotelChange(0, hotel)}
-                  placeholder="Search for base hotel..."
-                  currentValue={currentHotelName}
-                />
-              )}
+                    );
+                  })}
+                </select>
+              </div>
+              <div className="relative flex items-center">
+                {appMode === "dropdown-mock" ? (
+                  <>
+                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400 dark:text-surface-500" />
+                    <select
+                      value={stay.hotel ? MOCK_HOTELS.findIndex(h => h.name === stay.hotel.name) : ""}
+                      onChange={(e) => handleHotelRangeChange(stay.startDay, stay.endDay, e.target.value)}
+                      className="w-full bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-700 text-surface-900 dark:text-white text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block pl-10 p-2.5 appearance-none cursor-pointer"
+                    >
+                      <option value="" disabled>Select hotel...</option>
+                      {MOCK_HOTELS.map((h, i) => <option key={i} value={i}>{h.name}</option>)}
+                    </select>
+                  </>
+                ) : (
+                  <HotelSearchInput
+                    onSelect={(h) => handleHotelRangeChange(stay.startDay, stay.endDay, h)}
+                    placeholder={`Search hotel for Days ${stay.startDay + 1}-${stay.endDay + 1}...`}
+                    currentValue={stay.hotel?.name || ""}
+                  />
+                )}
+              </div>
             </div>
-          ) : (
-            <div className="space-y-3">
-              {Array.from({ length: days }).map((_, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <span className="text-[10px] font-bold text-surface-400 w-10 shrink-0 uppercase">
-                    Day {i + 1}
-                  </span>
-                  <div className="flex-1">
-                    <HotelSearchInput
-                      onSelect={(h) => handleHotelChange(i, h)}
-                      placeholder={`Hotel for Day ${i + 1}`}
-                      currentValue={
-                        hotels.find((h) => h.dayIndex === i)?.name || ""
-                      }
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          ))}
         </div>
       </div>
     </div>

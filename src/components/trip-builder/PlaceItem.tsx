@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Trash2, MapPin, Pin, Clock, Timer } from "lucide-react";
+import { GripVertical, Trash2, MapPin, Pin, Clock, Timer, AlertCircle } from "lucide-react";
 import { Place, PlaceCategory } from "../../types";
 import { useRouteStore } from "../../store/useRouteStore";
 import {
@@ -281,6 +281,15 @@ export const PlaceItem: React.FC<PlaceItemProps> = ({ place }) => {
           </div>
         </div>
       </div>
+
+      {place.unfeasibleReason && place.dayIndex === null && (
+        <div className="bg-red-50 dark:bg-red-900/10 border-t border-red-100 dark:border-red-900/20 px-4 py-2.5 flex items-start gap-2">
+          <AlertCircle className="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5" />
+          <p className="text-[10px] font-medium text-red-700 dark:text-red-400 leading-tight">
+            <span className="font-bold">Unfeasible:</span> {place.unfeasibleReason}
+          </p>
+        </div>
+      )}
     </div>
   );
 };

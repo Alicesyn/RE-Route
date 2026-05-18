@@ -26,6 +26,8 @@ export interface Place {
   pinnedToDay: boolean; // true if user manually assigned to a day; optimizer won't move pinned places
   notes?: string;
   openingHours?: string[]; // e.g. ["Monday: 9:00 AM – 5:00 PM", ...]
+  unfeasibleReason?: string;
+  editorialSummary?: string; // Fallback description from Google Maps
 }
 
 export interface Hotel {
@@ -61,6 +63,7 @@ export interface OptimizationResult {
   days: DayRoute[];
   totalDistance: number;
   totalTime: number;
+  unassignedPlaces?: Place[];
 }
 
 export interface ItinerarySnapshot {

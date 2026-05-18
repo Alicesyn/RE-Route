@@ -24,11 +24,20 @@ export interface MapsPlace {
   lng: number;
   types: string[];
   openingHours?: string[];
+  editorialSummary?: string;
 }
 
-export const searchPlaces = async (query: string): Promise<MapsPlace[]> => {
+export const searchPlaces = async (
+  query: string,
+  biasLocation?: { lat: number; lng: number }
+): Promise<MapsPlace[]> => {
   if (!query) return [];
-  if (searchCache[query]) return searchCache[query];
+
+  const cacheKey = biasLocation
+    ? `${query}_${Math.round(biasLocation.lat)}_${Math.round(biasLocation.lng)}`
+    : query;
+
+  if (searchCache[cacheKey]) return searchCache[cacheKey];
 
   if (!API_KEY) {
     throw new Error("Google Maps API Key is missing");
@@ -43,9 +52,22 @@ export const searchPlaces = async (query: string): Promise<MapsPlace[]> => {
           "Content-Type": "application/json",
           "X-Goog-Api-Key": API_KEY,
           "X-Goog-FieldMask":
-            "places.id,places.displayName,places.formattedAddress,places.location,places.types,places.regularOpeningHours",
+            "places.id,places.displayName,places.formattedAddress,places.location,places.types,places.regularOpeningHours,places.editorialSummary",
         },
-        body: JSON.stringify({ textQuery: query }),
+        body: JSON.stringify({
+          textQuery: query,
+          ...(biasLocation && {
+            locationBias: {
+              circle: {
+                center: {
+                  latitude: biasLocation.lat,
+                  longitude: biasLocation.lng,
+                },
+                radius: 50000.0, // 50km radius
+              },
+            },
+          }),
+        }),
       },
     );
 
@@ -62,9 +84,10 @@ export const searchPlaces = async (query: string): Promise<MapsPlace[]> => {
       lng: p.location.longitude,
       types: p.types || [],
       openingHours: p.regularOpeningHours?.weekdayDescriptions || [],
+      editorialSummary: p.editorialSummary?.text,
     }));
 
-    saveToCache(query, results);
+    saveToCache(cacheKey, results);
     return results;
   } catch (error) {
     console.error("Maps Search Error:", error);

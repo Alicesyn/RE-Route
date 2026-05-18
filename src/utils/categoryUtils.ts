@@ -43,6 +43,7 @@ const KEYWORD_MAP: { category: PlaceCategory; keywords: string[] }[] = [
       "exhibit",
       "art collection",
       "heritage center",
+      "art_gallery",
     ],
   },
   {
@@ -59,6 +60,9 @@ const KEYWORD_MAP: { category: PlaceCategory; keywords: string[] }[] = [
       "taco",
       "ramen",
       "food hall",
+      "food",
+      "meal_takeaway",
+      "meal_delivery",
     ],
   },
   {
@@ -84,6 +88,8 @@ const KEYWORD_MAP: { category: PlaceCategory; keywords: string[] }[] = [
       "nature reserve",
       "high line",
       "highline",
+      "natural_feature",
+      "campground",
     ],
   },
   {
@@ -101,6 +107,8 @@ const KEYWORD_MAP: { category: PlaceCategory; keywords: string[] }[] = [
       "basilica",
       "chapel",
       "shrine",
+      "place_of_worship",
+      "hindu_temple",
     ],
   },
   {
@@ -114,6 +122,12 @@ const KEYWORD_MAP: { category: PlaceCategory; keywords: string[] }[] = [
       "boutique",
       "store",
       "soho",
+      "shopping_mall",
+      "clothing_store",
+      "shoe_store",
+      "electronics_store",
+      "book_store",
+      "supermarket",
     ],
   },
   {
@@ -129,6 +143,9 @@ const KEYWORD_MAP: { category: PlaceCategory; keywords: string[] }[] = [
       "aquarium",
       "amusement",
       "theme park",
+      "amusement_park",
+      "movie_theater",
+      "bowling_alley",
     ],
   },
   {
@@ -141,6 +158,7 @@ const KEYWORD_MAP: { category: PlaceCategory; keywords: string[] }[] = [
       "nightclub",
       "speakeasy",
       "rooftop bar",
+      "night_club",
     ],
   },
   {
@@ -160,6 +178,7 @@ const KEYWORD_MAP: { category: PlaceCategory; keywords: string[] }[] = [
       "skyscraper",
       "iconic",
       "historic",
+      "tourist_attraction",
     ],
   },
 ];
@@ -167,8 +186,9 @@ const KEYWORD_MAP: { category: PlaceCategory; keywords: string[] }[] = [
 export function autoCategorize(
   name: string,
   description: string = "",
+  types: string[] = []
 ): PlaceCategory {
-  const text = `${name} ${description}`.toLowerCase();
+  const text = `${name} ${description} ${types.join(" ")}`.toLowerCase();
 
   // Check each category's keywords
   for (const { category, keywords } of KEYWORD_MAP) {

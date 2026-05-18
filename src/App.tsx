@@ -17,6 +17,7 @@ function App() {
     days,
     travelMode,
     dailyBudget,
+    strictBudget,
     optimizedRoutes,
     setOptimizedRoutes,
     clearAll,
@@ -47,6 +48,7 @@ function App() {
       days,
       travelMode,
       dailyBudget,
+      strictBudget,
       showFlights ? arrivalFlight?.location : null,
       showFlights ? departureFlight?.location : null,
     );
@@ -75,6 +77,20 @@ function App() {
           }
         });
       });
+
+      if (result.unassignedPlaces) {
+        result.unassignedPlaces.forEach((unassigned) => {
+          placeUpdates.push({
+            id: unassigned.id,
+            updates: {
+              dayIndex: null,
+              orderInDay: null,
+              unfeasibleReason: unassigned.unfeasibleReason,
+            },
+          });
+        });
+      }
+
       if (placeUpdates.length > 0) {
         updatePlacesBulk(placeUpdates);
       }
@@ -101,6 +117,8 @@ function App() {
           let aiData;
 
           if (appMode === "real") {
+            // Sleep for 4 seconds before hitting API to respect 15 RPM free tier limit
+            await new Promise((resolve) => setTimeout(resolve, 4000));
             aiData = await summarizePlace(
               p.name,
               p.address,
@@ -126,6 +144,17 @@ function App() {
           });
         } catch (err) {
           console.error(`Failed to summarize ${p.name}:`, err);
+
+          // Fallback to Google Maps editorial summary if AI fails completely
+          if (p.editorialSummary) {
+            updates.push({
+              id: p.id,
+              updates: {
+                description: p.editorialSummary,
+                descriptionSource: "ai" as const,
+              },
+            });
+          }
         }
       }
 
