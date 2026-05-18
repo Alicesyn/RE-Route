@@ -17,6 +17,8 @@ import {
 } from "@dnd-kit/sortable";
 import { PlaceItem } from "./PlaceItem";
 import { useRouteStore } from "../../store/useRouteStore";
+import { ALL_CATEGORIES, getCategoryLabel, getCategoryEmoji } from "../../utils/categoryUtils";
+import { PlaceCategory } from "../../types";
 
 interface PlaceListProps {
   isExpanded: boolean;
@@ -28,6 +30,7 @@ export const PlaceList: React.FC<PlaceListProps> = ({ isExpanded }) => {
   const { places, reorderPlaces } = useRouteStore();
   const [activeTab, setActiveTab] = useState<FilterTab>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<PlaceCategory | "all">("all");
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -61,6 +64,10 @@ export const PlaceList: React.FC<PlaceListProps> = ({ isExpanded }) => {
     filteredPlaces = filteredPlaces.filter((p) =>
       p.name.toLowerCase().includes(searchQuery.toLowerCase()),
     );
+  }
+
+  if (categoryFilter !== "all") {
+    filteredPlaces = filteredPlaces.filter((p) => p.category === categoryFilter);
   }
 
   if (places.length === 0) {
@@ -110,16 +117,30 @@ export const PlaceList: React.FC<PlaceListProps> = ({ isExpanded }) => {
         </button>
       </div>
 
-      {/* PTV Search */}
-      <div className="relative mb-3">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400 w-3.5 h-3.5" />
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search added places..."
-          className="w-full text-xs bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-lg py-2 pl-8 pr-3 text-surface-900 dark:text-white placeholder:text-surface-400 dark:placeholder:text-surface-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-        />
+      {/* PTV Search & Filter */}
+      <div className="flex gap-2 mb-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400 w-3.5 h-3.5" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search added places..."
+            className="w-full h-9 text-xs bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-lg pl-8 pr-3 text-surface-900 dark:text-white placeholder:text-surface-400 dark:placeholder:text-surface-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+          />
+        </div>
+        <select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value as PlaceCategory | "all")}
+          className="h-9 shrink-0 text-xs bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-lg px-2 text-surface-700 dark:text-surface-300 focus:outline-none focus:ring-1 focus:ring-primary-500"
+        >
+          <option value="all">All Categories</option>
+          {ALL_CATEGORIES.map((cat) => (
+            <option key={cat} value={cat}>
+              {getCategoryEmoji(cat)} {getCategoryLabel(cat)}
+            </option>
+          ))}
+        </select>
       </div>
 
       {filteredPlaces.length === 0 ? (

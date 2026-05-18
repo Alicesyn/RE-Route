@@ -23,8 +23,8 @@ export const summarizePlace = async (
     Analyze the following place: "${name}" at "${address}".
     Google Maps types: ${types.join(", ")}.
 
-    Provide a concise 1-2 sentence description. 
-    IMPORTANT: Focus on the "vibe" and what people say about it (reputation/atmosphere) rather than just dry facts.
+    Provide 3-7 comma-separated, punchy phrases highlighting the core vibe and what it's famous for (e.g. "Best matcha in Kyoto, quiet atmosphere, historic architecture"). 
+    IMPORTANT: Make it sound natural, casual, and straight to the point. NO fluff, NO typical AI marketing speak (avoid words like "bustling", "vibrant", "unforgettable").
     Also, categorize it into one of these: museum, restaurant, coffee_shop, park, landmark, shopping, entertainment, beach, religious_site, nightlife, other.
     Finally, suggest a typical visit duration in minutes.
 

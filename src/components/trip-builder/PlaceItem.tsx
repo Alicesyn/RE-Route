@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Trash2, MapPin, Pin, Clock, Timer, AlertCircle } from "lucide-react";
+import { GripVertical, Trash2, MapPin, Pin, Clock, Timer, AlertCircle, Sparkles, Loader2 } from "lucide-react";
 import { Place, PlaceCategory } from "../../types";
 import { useRouteStore } from "../../store/useRouteStore";
 import {
@@ -10,6 +10,7 @@ import {
   getDefaultDuration,
   ALL_CATEGORIES,
 } from "../../utils/categoryUtils";
+import { summarizePlace } from "../../services/aiService";
 
 interface PlaceItemProps {
   place: Place;
@@ -23,9 +24,11 @@ export const PlaceItem: React.FC<PlaceItemProps> = ({ place }) => {
     unassignPlace,
     days,
     sidebarWidth,
+    appMode,
   } = useRouteStore();
   const isSidebarExpanded = sidebarWidth >= 450;
   const [isEditing, setIsEditing] = useState(false);
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [desc, setDesc] = useState(place.description || "");
   const [isEditingDuration, setIsEditingDuration] = useState(false);
   const [durationVal, setDurationVal] = useState(
@@ -33,6 +36,12 @@ export const PlaceItem: React.FC<PlaceItemProps> = ({ place }) => {
   );
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const durationRef = useRef<HTMLInputElement>(null);
+
+  // Sync local state if the place is updated externally (e.g. by AI generation)
+  useEffect(() => {
+    if (!isEditing) setDesc(place.description || "");
+    if (!isEditingDuration) setDurationVal((place.estimatedDuration ?? 60).toString());
+  }, [place.description, place.estimatedDuration, isEditing, isEditingDuration]);
 
   const {
     attributes,
@@ -68,6 +77,45 @@ export const PlaceItem: React.FC<PlaceItemProps> = ({ place }) => {
     setIsEditing(false);
     if (desc !== place.description) {
       updatePlace(place.id, { description: desc, descriptionSource: "user" });
+    }
+  };
+
+  const handleGenerate = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsGeneratingAI(true);
+    try {
+      let aiData;
+      if (appMode === "real") {
+        aiData = await summarizePlace(
+          place.name,
+          place.address,
+          (place as any).types || [],
+        );
+      } else {
+        aiData = {
+          description: `[MOCK AI] Comma separated mock summary of ${place.name}.`,
+          category: place.category,
+          estimatedDuration: place.estimatedDuration,
+        };
+      }
+      updatePlace(place.id, {
+        description: aiData.description,
+        category: aiData.category,
+        estimatedDuration: aiData.estimatedDuration,
+        descriptionSource: "ai",
+      });
+      setDesc(aiData.description);
+    } catch (err) {
+      console.error(err);
+      if (place.editorialSummary) {
+        updatePlace(place.id, {
+          description: place.editorialSummary,
+          descriptionSource: "ai",
+        });
+        setDesc(place.editorialSummary);
+      }
+    } finally {
+      setIsGeneratingAI(false);
     }
   };
 
@@ -266,17 +314,41 @@ export const PlaceItem: React.FC<PlaceItemProps> = ({ place }) => {
                 rows={1}
               />
             ) : (
-              <p
-                onClick={() => !isDragging && setIsEditing(true)}
-                className="text-sm text-surface-600 dark:text-surface-300 cursor-text hover:bg-surface-50 dark:hover:bg-surface-700 p-2 -mx-2 rounded-lg transition-colors border border-transparent hover:border-surface-200 dark:hover:border-surface-600 line-clamp-2"
-                title="Click to edit"
-              >
-                {place.description || (
-                  <span className="text-surface-400 dark:text-surface-500 italic">
-                    Click to add description...
-                  </span>
-                )}
-              </p>
+              <div className="group/desc flex items-start justify-between gap-2 p-2 -mx-2 rounded-lg border border-transparent hover:border-surface-200 dark:hover:border-surface-600 hover:bg-surface-50 dark:hover:bg-surface-700 transition-colors">
+                <p
+                  onClick={() => {
+                    if (!isDragging) {
+                      setDesc(place.description || "");
+                      setIsEditing(true);
+                    }
+                  }}
+                  className="text-sm text-surface-600 dark:text-surface-300 cursor-text line-clamp-2 flex-1"
+                  title="Click to edit"
+                >
+                  {place.description || (
+                    <span className="text-surface-400 dark:text-surface-500 italic">
+                      Click to add description...
+                    </span>
+                  )}
+                </p>
+                
+                <button
+                  onClick={handleGenerate}
+                  disabled={isGeneratingAI}
+                  className={`shrink-0 p-1 rounded transition-colors ${
+                    place.descriptionSource === "ai"
+                      ? "text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/30"
+                      : "text-surface-400 hover:text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/30 opacity-0 group-hover/desc:opacity-100"
+                  } disabled:opacity-50`}
+                  title="Generate AI Description"
+                >
+                  {isGeneratingAI ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
             )}
           </div>
         </div>
