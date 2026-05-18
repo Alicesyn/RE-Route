@@ -82,6 +82,7 @@ interface RouteState extends ModeData {
   removePlace: (id: string) => void;
   reorderPlaces: (places: Place[]) => void;
   clearAll: () => void;
+  unassignAll: () => void;
 
   // Missing Places
   addMissingPlace: (name: string) => void;
@@ -289,6 +290,17 @@ export const useRouteStore = create<RouteState>()(
         console.log("Zustand clearAll executed");
         set({ places: [], hotels: [], missingPlaces: [], optimizedRoutes: [] });
       },
+
+      unassignAll: () =>
+        set((state) => ({
+          places: state.places.map((p) => ({
+            ...p,
+            dayIndex: null,
+            orderInDay: null,
+            pinnedToDay: false,
+          })),
+          optimizedRoutes: [],
+        })),
 
       addMissingPlace: (name) =>
         set((state) => ({

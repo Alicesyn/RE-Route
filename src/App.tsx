@@ -16,17 +16,19 @@ function App() {
     hotels,
     days,
     travelMode,
-    dailyBudget,
     strictBudget,
     optimizedRoutes,
     setOptimizedRoutes,
     clearAll,
+    unassignAll,
     appMode,
     updatePlacesBulk,
     theme,
     showFlights,
     arrivalFlight,
     departureFlight,
+    dayStartTime,
+    dayEndTime,
   } = useRouteStore();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -42,12 +44,47 @@ function App() {
 
   const handleOptimize = () => {
     if (places.length === 0) return;
+    const [startH, startM] = dayStartTime.split(":").map(Number);
+    const [endH, endM] = dayEndTime.split(":").map(Number);
+    let baseDayMinutes = endH * 60 + endM - (startH * 60 + startM);
+    if (baseDayMinutes < 0) baseDayMinutes += 24 * 60; // Handle overnight
+
+    const dayBudgets = Array.from({ length: days }).map((_, i) => {
+      let dayAvailableMinutes = baseDayMinutes;
+      const isFirstDay = i === 0;
+      const isLastDay = i === days - 1;
+
+      if (showFlights) {
+        if (isFirstDay && arrivalFlight) {
+          const [arrH, arrM] = arrivalFlight.time.split(":").map(Number);
+          const arrivalTotal = arrH * 60 + arrM + arrivalFlight.buffer;
+          const dayStartTotal = startH * 60 + startM;
+          const effectiveStart = Math.max(dayStartTotal, arrivalTotal);
+
+          let available = endH * 60 + endM - effectiveStart;
+          if (available < 0) available += 24 * 60;
+          dayAvailableMinutes = available;
+        }
+        if (isLastDay && departureFlight) {
+          const [depH, depM] = departureFlight.time.split(":").map(Number);
+          const depTotal = depH * 60 + depM - departureFlight.buffer;
+          const dayEndTotal = endH * 60 + endM;
+          const effectiveEnd = Math.min(dayEndTotal, depTotal);
+
+          let available = effectiveEnd - (startH * 60 + startM);
+          if (available < 0) available += 24 * 60;
+          dayAvailableMinutes = available;
+        }
+      }
+      return dayAvailableMinutes;
+    });
+
     const result = solveTSP(
       places,
       hotels,
       days,
       travelMode,
-      dailyBudget,
+      dayBudgets,
       strictBudget,
       showFlights ? arrivalFlight?.location : null,
       showFlights ? departureFlight?.location : null,
@@ -214,6 +251,14 @@ function App() {
                       className={`w-4 h-4 ${isGenerating ? "animate-pulse" : ""}`}
                     />
                     {isGenerating ? "Writing..." : "AI Describe"}
+                  </button>
+                )}
+                {places.some((p) => p.dayIndex !== null) && (
+                  <button
+                    onClick={() => unassignAll()}
+                    className="text-sm font-semibold text-amber-600 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/10 dark:hover:bg-amber-900/20 px-3 py-1.5 rounded-lg transition-all"
+                  >
+                    Unassign All
                   </button>
                 )}
                 {places.length > 0 && (

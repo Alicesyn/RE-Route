@@ -7,7 +7,6 @@ import {
 } from "../types";
 import { getDistance, estimateTime } from "../utils/distance";
 
-const DEFAULT_DAILY_BUDGET_MIN = 720; // 12 hours
 
 // Time-budget-aware clustering
 // Distributes places across days so no single day exceeds the budget
@@ -17,7 +16,7 @@ function clusterPlaces(
   hotels: Hotel[],
   days: number,
   travelMode: TravelMode,
-  dailyBudgetMin: number = DEFAULT_DAILY_BUDGET_MIN,
+  dailyBudgets: number[],
   strictBudget: boolean = false,
   arrivalLocation?: Place | null,
   departureLocation?: Place | null,
@@ -67,7 +66,7 @@ function clusterPlaces(
         const d = getDistance(p.lat, p.lng, anchor.lat, anchor.lng);
         if (d < minDist) minDist = d;
       }
-      if (minDist > 500) { // 500 km
+      if (minDist > 500 * 1000) { // 500 km in meters
         rejectedUnassigned.push({
           ...p,
           dayIndex: null,
@@ -94,7 +93,7 @@ function clusterPlaces(
 
   // Greedy assignment: put each place on the day with the most remaining budget
   for (const place of toAssign) {
-    let bestDay = 0;
+    let bestDay = -1;
     let maxRemaining = -Infinity;
 
     for (let d = 0; d < days; d++) {
@@ -108,7 +107,7 @@ function clusterPlaces(
 
       const totalIfAdded =
         dayTimeUsed[d] + (place.estimatedDuration ?? 60) + travelMin;
-      const remaining = dailyBudgetMin - totalIfAdded;
+      const remaining = dailyBudgets[d] - totalIfAdded;
 
       if (remaining > maxRemaining) {
         if (!strictBudget || remaining >= 0) {
@@ -357,7 +356,7 @@ export function solveTSP(
   hotels: Hotel[],
   days: number,
   travelMode: TravelMode,
-  dailyBudgetMin: number = DEFAULT_DAILY_BUDGET_MIN,
+  dailyBudgets: number[],
   strictBudget: boolean = false,
   arrivalLocation?: Place | null,
   departureLocation?: Place | null,
@@ -370,7 +369,7 @@ export function solveTSP(
     hotels,
     days,
     travelMode,
-    dailyBudgetMin,
+    dailyBudgets,
     strictBudget,
     arrivalLocation,
     departureLocation,
@@ -382,8 +381,8 @@ export function solveTSP(
 
   // 2. Optimize each day
   for (let d = 0; d < days; d++) {
-    const dayPlaces = clusteredPlaces.filter((p) => p.dayIndex === d);
-    const route = buildDayRoute(
+    let dayPlaces = clusteredPlaces.filter((p) => p.dayIndex === d);
+    let route = buildDayRoute(
       dayPlaces,
       hotels,
       d,
@@ -391,6 +390,51 @@ export function solveTSP(
       d === 0 ? arrivalLocation : null,
       d === days - 1 ? departureLocation : null,
     );
+
+    const limit = dailyBudgets[d];
+
+    if (strictBudget) {
+      let totalDayMin =
+        dayPlaces.reduce((sum, p) => sum + (p.estimatedDuration ?? 60), 0) +
+        Math.round(route.totalTime / 60);
+
+      while (dayPlaces.length > 0 && totalDayMin > limit) {
+        const evictable = dayPlaces.filter((p) => !p.pinnedToDay);
+        if (evictable.length === 0) {
+          break; // only pinned places left
+        }
+
+        // Evict the last evictable place (lowest priority/greedy order)
+        const toEvict = evictable[evictable.length - 1];
+
+        // Mutate original object in clusteredPlaces so it gets returned as unassigned
+        const matched = clusteredPlaces.find((p) => p.id === toEvict.id);
+        if (matched) {
+          matched.dayIndex = null;
+          matched.orderInDay = null;
+          matched.unfeasibleReason = "Exceeds daily time budget.";
+        }
+
+        // Update dayPlaces local filter
+        dayPlaces = dayPlaces.filter((p) => p.id !== toEvict.id);
+
+        // Rebuild route
+        route = buildDayRoute(
+          dayPlaces,
+          hotels,
+          d,
+          travelMode,
+          d === 0 ? arrivalLocation : null,
+          d === days - 1 ? departureLocation : null,
+        );
+
+        // Recalculate totalDayMin
+        totalDayMin =
+          dayPlaces.reduce((sum, p) => sum + (p.estimatedDuration ?? 60), 0) +
+          Math.round(route.totalTime / 60);
+      }
+    }
+
     dayRoutes.push(route);
     totalTripDistance += route.totalDistance;
     totalTripTime += route.totalTime;

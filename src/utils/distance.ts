@@ -24,10 +24,15 @@ export function estimateTime(
   distanceMeters: number,
   mode: "walking" | "transit" | "driving",
 ): number {
+  const isLongDistance = distanceMeters > 50000; // Over 50 km is inter-city
+
   let speedMps = 1.4; // walking avg speed ~ 1.4 m/s (5km/h)
 
-  if (mode === "driving") speedMps = 8; // approx 30 km/h avg in cities
-  if (mode === "transit") speedMps = 5; // approx 18 km/h avg with stops
+  if (mode === "driving") {
+    speedMps = isLongDistance ? 20 : 8; // Highway (72 km/h) vs City (30 km/h)
+  } else if (mode === "transit") {
+    speedMps = isLongDistance ? 45 : 5; // Bullet train (162 km/h) vs Local (18 km/h)
+  }
 
   return distanceMeters / speedMps;
 }
