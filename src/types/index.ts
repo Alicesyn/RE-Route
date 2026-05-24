@@ -11,6 +11,11 @@ export type PlaceCategory =
   | "nightlife"
   | "other";
 
+export interface CategoryConfig {
+  minPerDay?: number | null;
+  maxPerDay?: number | null;
+}
+
 export interface Place {
   id: string;
   name: string;

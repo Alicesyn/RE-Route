@@ -6,6 +6,7 @@ import {
   TravelMode,
   DayRoute,
   ItinerarySnapshot,
+  CategoryConfig,
 } from "../types";
 import { solveSingleDay } from "../services/tspSolver";
 import { estimateTime } from "../utils/distance";
@@ -47,6 +48,7 @@ interface RouteState extends ModeData {
   theme: "light" | "dark";
   showImages: boolean;
   categoryDurations: Record<PlaceCategory, number>;
+  categoryConfigs: Partial<Record<PlaceCategory, CategoryConfig>>;
   optimizedRoutes: DayRoute[];
   savedTrips: ItinerarySnapshot[];
 
@@ -75,6 +77,7 @@ interface RouteState extends ModeData {
   setTheme: (theme: "light" | "dark") => void;
   setShowImages: (show: boolean) => void;
   setCategoryDuration: (category: PlaceCategory, duration: number) => void;
+  setCategoryConfig: (category: PlaceCategory, config: Partial<CategoryConfig>) => void;
 
   // Places
   addPlace: (
@@ -87,6 +90,7 @@ interface RouteState extends ModeData {
   ) => void;
   removePlace: (id: string) => void;
   reorderPlaces: (places: Place[]) => void;
+  applyCategoryDurationsToPlaces: () => void;
   clearAll: () => void;
   unassignAll: () => void;
 
@@ -144,10 +148,14 @@ export const useRouteStore = create<RouteState>()(
       appMode: "mock",
       theme: "light",
       showImages: true,
-      categoryDurations: ALL_CATEGORIES.reduce((acc, cat) => {
-        acc[cat] = CATEGORY_DEFAULTS[cat].duration;
-        return acc;
-      }, {} as Record<PlaceCategory, number>),
+      categoryDurations: ALL_CATEGORIES.reduce(
+        (acc, cat) => ({
+          ...acc,
+          [cat]: CATEGORY_DEFAULTS[cat]?.duration || 60,
+        }),
+        {} as Record<PlaceCategory, number>,
+      ),
+      categoryConfigs: {},
       optimizedRoutes: [],
       savedTrips: [],
       mockData: {
@@ -264,6 +272,16 @@ export const useRouteStore = create<RouteState>()(
         set((state) => ({
           categoryDurations: { ...state.categoryDurations, [category]: duration },
         })),
+      setCategoryConfig: (category, config) =>
+        set((state) => ({
+          categoryConfigs: {
+            ...state.categoryConfigs,
+            [category]: {
+              ...state.categoryConfigs[category],
+              ...config,
+            },
+          },
+        })),
 
       addPlace: (place, targetDayIndex) =>
         set((state) => {
@@ -301,6 +319,15 @@ export const useRouteStore = create<RouteState>()(
         })),
 
       reorderPlaces: (places) => set({ places }),
+
+      applyCategoryDurationsToPlaces: () =>
+        set((state) => {
+          const newPlaces = state.places.map((p) => ({
+            ...p,
+            estimatedDuration: state.categoryDurations[p.category] || p.estimatedDuration,
+          }));
+          return { places: newPlaces };
+        }),
 
       clearAll: () => {
         console.log("Zustand clearAll executed");

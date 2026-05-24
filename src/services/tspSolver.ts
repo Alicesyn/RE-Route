@@ -4,6 +4,8 @@ import {
   DayRoute,
   TravelMode,
   OptimizationResult,
+  CategoryConfig,
+  PlaceCategory,
 } from "../types";
 import { getDistance, estimateTime } from "../utils/distance";
 
@@ -20,6 +22,7 @@ function clusterPlaces(
   strictBudget: boolean = false,
   arrivalLocation?: Place | null,
   departureLocation?: Place | null,
+  categoryConfigs?: Partial<Record<PlaceCategory, CategoryConfig>>,
 ): Place[] {
   const pinned = places.filter((p) => p.dayIndex !== null && p.pinnedToDay);
   const unassigned = places.filter(
@@ -91,12 +94,30 @@ function clusterPlaces(
     (a, b) => (b.estimatedDuration ?? 60) - (a.estimatedDuration ?? 60),
   );
 
+  // Initialize category counts per day (using pinned places)
+  const categoryCounts: Record<number, Record<string, number>> = {};
+  for (let d = 0; d < days; d++) categoryCounts[d] = {};
+  for (const p of pinned) {
+    if (p.dayIndex !== null) {
+      categoryCounts[p.dayIndex][p.category] = (categoryCounts[p.dayIndex][p.category] || 0) + 1;
+    }
+  }
+
   // Greedy assignment: put each place on the day with the most remaining budget
   for (const place of toAssign) {
     let bestDay = -1;
-    let maxRemaining = -Infinity;
+    let maxScore = -Infinity;
 
     for (let d = 0; d < days; d++) {
+      // 1. Check max limit constraint
+      const currentCount = categoryCounts[d]?.[place.category] || 0;
+      const catConfig = categoryConfigs?.[place.category];
+      if (catConfig && catConfig.maxPerDay !== undefined && catConfig.maxPerDay !== null) {
+        if (currentCount >= catConfig.maxPerDay) {
+          continue; // Skip this day, it's at max capacity for this category
+        }
+      }
+
       // Estimate travel time to this place from the day's hotel
       const hotel = hotels.find((h) => h.dayIndex === d);
       let travelMin = 0;
@@ -109,9 +130,18 @@ function clusterPlaces(
         dayTimeUsed[d] + (place.estimatedDuration ?? 60) + travelMin;
       const remaining = dailyBudgets[d] - totalIfAdded;
 
-      if (remaining > maxRemaining) {
-        if (!strictBudget || remaining >= 0) {
-          maxRemaining = remaining;
+      if (!strictBudget || remaining >= 0) {
+        let score = remaining;
+
+        // Apply min limit boost if this day is below the minimum
+        if (catConfig && catConfig.minPerDay !== undefined && catConfig.minPerDay !== null) {
+          if (currentCount < catConfig.minPerDay) {
+            score += 10000; // Massive artificial boost to prioritize filling the minimum
+          }
+        }
+
+        if (score > maxScore) {
+          maxScore = score;
           bestDay = d;
         }
       }
@@ -128,9 +158,13 @@ function clusterPlaces(
         travelMin = estimateTime(dist, travelMode) / 60;
       }
       dayTimeUsed[bestDay] += (place.estimatedDuration ?? 60) + travelMin;
+      
+      // Update category counts
+      if (!categoryCounts[bestDay]) categoryCounts[bestDay] = {};
+      categoryCounts[bestDay][place.category] = (categoryCounts[bestDay][place.category] || 0) + 1;
     } else {
       place.dayIndex = null;
-      place.unfeasibleReason = "Exceeds daily time budget.";
+      place.unfeasibleReason = "Exceeds daily time budget or category limits.";
       rejectedUnassigned.push(place);
     }
   }
@@ -360,6 +394,7 @@ export function solveTSP(
   strictBudget: boolean = false,
   arrivalLocation?: Place | null,
   departureLocation?: Place | null,
+  categoryConfigs?: Partial<Record<PlaceCategory, CategoryConfig>>,
 ): OptimizationResult {
   const startTime = performance.now();
 
@@ -373,6 +408,7 @@ export function solveTSP(
     strictBudget,
     arrivalLocation,
     departureLocation,
+    categoryConfigs,
   );
 
   let totalTripDistance = 0;

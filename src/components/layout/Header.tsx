@@ -13,10 +13,11 @@ import {
   Image,
   ImageOff,
   List,
+  Settings,
 } from "lucide-react";
 
 import { ImportModal } from "../trip-builder/ImportModal";
-import { CategorySettingsDropdown } from "./CategorySettingsDropdown";
+import { CategorySettingsModal } from "./CategorySettingsModal";
 import { LoadTripModal } from "./LoadTripModal";
 
 export const Header: React.FC = () => {
@@ -24,6 +25,7 @@ export const Header: React.FC = () => {
     useRouteStore();
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isLoadOpen, setIsLoadOpen] = useState(false);
+  const [isCategorySettingsOpen, setIsCategorySettingsOpen] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
 
   const handleSave = () => {
@@ -117,7 +119,13 @@ export const Header: React.FC = () => {
           )}
         </button>
 
-        <CategorySettingsDropdown />
+        <button
+          onClick={() => setIsCategorySettingsOpen(true)}
+          className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors border outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-surface-800 text-surface-700 dark:text-surface-200 border-surface-200 dark:border-surface-600 hover:bg-surface-50 dark:hover:bg-surface-700"
+        >
+          <Settings className="w-4 h-4 text-surface-400 dark:text-surface-500" />
+          <span>Categories</span>
+        </button>
 
         {/* Images Toggle */}
         <button
@@ -199,7 +207,15 @@ export const Header: React.FC = () => {
         isOpen={isImportOpen}
         onClose={() => setIsImportOpen(false)}
       />
-      <LoadTripModal isOpen={isLoadOpen} onClose={() => setIsLoadOpen(false)} />
+      <LoadTripModal
+        isOpen={isLoadOpen}
+        onClose={() => setIsLoadOpen(false)}
+      />
+      
+      <CategorySettingsModal
+        isOpen={isCategorySettingsOpen}
+        onClose={() => setIsCategorySettingsOpen(false)}
+      />
     </header>
   );
 };

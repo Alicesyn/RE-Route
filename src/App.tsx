@@ -30,6 +30,7 @@ function App() {
     departureFlight,
     dayStartTime,
     dayEndTime,
+    categoryConfigs,
   } = useRouteStore();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -89,6 +90,7 @@ function App() {
       strictBudget,
       showFlights ? arrivalFlight?.location : null,
       showFlights ? departureFlight?.location : null,
+      categoryConfigs,
     );
     if (result.success) {
       setOptimizedRoutes(result.days);
