@@ -25,6 +25,7 @@ export interface MapsPlace {
   types: string[];
   openingHours?: string[];
   editorialSummary?: string;
+  photoUrl?: string;
 }
 
 export const searchPlaces = async (
@@ -52,7 +53,7 @@ export const searchPlaces = async (
           "Content-Type": "application/json",
           "X-Goog-Api-Key": API_KEY,
           "X-Goog-FieldMask":
-            "places.id,places.displayName,places.formattedAddress,places.location,places.types,places.regularOpeningHours,places.editorialSummary",
+            "places.id,places.displayName,places.formattedAddress,places.location,places.types,places.regularOpeningHours,places.editorialSummary,places.photos",
         },
         body: JSON.stringify({
           textQuery: query,
@@ -85,6 +86,9 @@ export const searchPlaces = async (
       types: p.types || [],
       openingHours: p.regularOpeningHours?.weekdayDescriptions || [],
       editorialSummary: p.editorialSummary?.text,
+      photoUrl: p.photos?.[0]?.name
+        ? `https://places.googleapis.com/v1/${p.photos[0].name}/media?key=${API_KEY}&maxHeightPx=400&maxWidthPx=400`
+        : undefined,
     }));
 
     saveToCache(cacheKey, results);

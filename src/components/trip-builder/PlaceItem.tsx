@@ -9,6 +9,7 @@ import {
   getCategoryLabel,
   getDefaultDuration,
   ALL_CATEGORIES,
+  getCategoryFallbackImage,
 } from "../../utils/categoryUtils";
 import { summarizePlace } from "../../services/aiService";
 
@@ -25,6 +26,7 @@ export const PlaceItem: React.FC<PlaceItemProps> = ({ place }) => {
     days,
     sidebarWidth,
     appMode,
+    showImages,
   } = useRouteStore();
   const isSidebarExpanded = sidebarWidth >= 450;
   const [isEditing, setIsEditing] = useState(false);
@@ -192,6 +194,20 @@ export const PlaceItem: React.FC<PlaceItemProps> = ({ place }) => {
         </div>
 
         <div className="flex-1 min-w-0">
+          {showImages && (
+            <div className="w-full h-24 mb-3 rounded-lg overflow-hidden relative shrink-0">
+              <img 
+                src={place.photoUrl || getCategoryFallbackImage(place.category)} 
+                alt={place.name} 
+                loading="lazy"
+                onError={(e) => {
+                  e.currentTarget.src = getCategoryFallbackImage(place.category);
+                }}
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-black/10" />
+            </div>
+          )}
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-surface-900 dark:text-white flex items-center gap-2">

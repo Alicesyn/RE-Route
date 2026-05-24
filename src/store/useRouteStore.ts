@@ -10,6 +10,8 @@ import {
 import { solveSingleDay } from "../services/tspSolver";
 import { estimateTime } from "../utils/distance";
 import { format, addDays, parseISO, differenceInDays } from "date-fns";
+import { CATEGORY_DEFAULTS, ALL_CATEGORIES } from "../utils/categoryConstants";
+import { PlaceCategory } from "../types";
 
 interface ModeData {
   places: Place[];
@@ -43,6 +45,8 @@ interface RouteState extends ModeData {
   strictBudget: boolean; // if true, won't assign places that exceed daily budget
   appMode: "real" | "mock" | "dropdown-mock";
   theme: "light" | "dark";
+  showImages: boolean;
+  categoryDurations: Record<PlaceCategory, number>;
   optimizedRoutes: DayRoute[];
   savedTrips: ItinerarySnapshot[];
 
@@ -69,6 +73,8 @@ interface RouteState extends ModeData {
   setStrictBudget: (strict: boolean) => void;
   setAppMode: (mode: "real" | "mock" | "dropdown-mock") => void;
   setTheme: (theme: "light" | "dark") => void;
+  setShowImages: (show: boolean) => void;
+  setCategoryDuration: (category: PlaceCategory, duration: number) => void;
 
   // Places
   addPlace: (
@@ -137,6 +143,11 @@ export const useRouteStore = create<RouteState>()(
       missingPlaces: [],
       appMode: "mock",
       theme: "light",
+      showImages: true,
+      categoryDurations: ALL_CATEGORIES.reduce((acc, cat) => {
+        acc[cat] = CATEGORY_DEFAULTS[cat].duration;
+        return acc;
+      }, {} as Record<PlaceCategory, number>),
       optimizedRoutes: [],
       savedTrips: [],
       mockData: {
@@ -248,6 +259,11 @@ export const useRouteStore = create<RouteState>()(
           };
         }),
       setTheme: (theme) => set({ theme }),
+      setShowImages: (showImages) => set({ showImages }),
+      setCategoryDuration: (category, duration) =>
+        set((state) => ({
+          categoryDurations: { ...state.categoryDurations, [category]: duration },
+        })),
 
       addPlace: (place, targetDayIndex) =>
         set((state) => {

@@ -32,6 +32,7 @@ export const MOCK_PLACES: Omit<
     descriptionSource: "mock",
     category: "park",
     estimatedDuration: 75,
+    photoUrl: "https://loremflickr.com/800/600/newyork,centralpark",
   },
   {
     id: "m2",
@@ -44,6 +45,7 @@ export const MOCK_PLACES: Omit<
     descriptionSource: "mock",
     category: "landmark",
     estimatedDuration: 45,
+    photoUrl: "https://loremflickr.com/800/600/newyork,timessquare",
   },
   {
     id: "m3",
@@ -65,6 +67,7 @@ export const MOCK_PLACES: Omit<
       "Saturday: 9:00 AM – 12:00 AM",
       "Sunday: 9:00 AM – 11:00 PM"
     ],
+    photoUrl: "https://loremflickr.com/800/600/newyork,empirestate",
   },
   {
     id: "m4",
@@ -77,6 +80,7 @@ export const MOCK_PLACES: Omit<
     descriptionSource: "mock",
     category: "landmark",
     estimatedDuration: 120,
+    photoUrl: "https://loremflickr.com/800/600/newyork,statueofliberty",
   },
   {
     id: "m5",
@@ -97,6 +101,7 @@ export const MOCK_PLACES: Omit<
       "Saturday: 10:00 AM – 9:00 PM",
       "Sunday: 10:00 AM – 5:00 PM"
     ],
+    photoUrl: "https://loremflickr.com/800/600/newyork,museum",
   },
   {
     id: "m6",
@@ -109,6 +114,7 @@ export const MOCK_PLACES: Omit<
     descriptionSource: "mock",
     category: "landmark",
     estimatedDuration: 45,
+    photoUrl: "https://loremflickr.com/800/600/newyork,brooklynbridge",
   },
   {
     id: "m7",
@@ -121,5 +127,6 @@ export const MOCK_PLACES: Omit<
     descriptionSource: "mock",
     category: "park",
     estimatedDuration: 60,
+    photoUrl: "https://loremflickr.com/800/600/newyork,highline",
   },
 ];

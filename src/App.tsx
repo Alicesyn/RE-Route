@@ -1,6 +1,7 @@
 import { Header } from "./components/layout/Header";
 import { PlaceSearch } from "./components/trip-builder/PlaceSearch";
 import { PlaceList } from "./components/trip-builder/PlaceList";
+import { SuggestedPlaces } from "./components/trip-builder/SuggestedPlaces";
 import { TripSettings } from "./components/trip-builder/TripSettings";
 import { MapView } from "./components/map/MapView";
 import { DailySchedule } from "./components/schedule/DailySchedule";
@@ -294,6 +295,8 @@ function App() {
                   )}
                 </button>
               )}
+              
+              <SuggestedPlaces />
             </div>
           </div>
 

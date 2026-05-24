@@ -28,6 +28,7 @@ export interface Place {
   openingHours?: string[]; // e.g. ["Monday: 9:00 AM – 5:00 PM", ...]
   unfeasibleReason?: string;
   editorialSummary?: string; // Fallback description from Google Maps
+  photoUrl?: string;
 }
 
 export interface Hotel {

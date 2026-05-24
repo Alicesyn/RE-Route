@@ -10,13 +10,17 @@ import {
   FolderOpen,
   Check,
   FileText,
+  Image,
+  ImageOff,
+  List,
 } from "lucide-react";
 
 import { ImportModal } from "../trip-builder/ImportModal";
+import { CategorySettingsDropdown } from "./CategorySettingsDropdown";
 import { LoadTripModal } from "./LoadTripModal";
 
 export const Header: React.FC = () => {
-  const { appMode, setAppMode, title, setTitle, saveTrip, places, theme, setTheme } =
+  const { appMode, setAppMode, title, setTitle, saveTrip, places, theme, setTheme, showImages, setShowImages } =
     useRouteStore();
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isLoadOpen, setIsLoadOpen] = useState(false);
@@ -39,6 +43,17 @@ export const Header: React.FC = () => {
     const a = document.createElement("a");
     a.href = url;
     a.download = `Wanderlog_Places_${title.replace(/\s+/g, "_")}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportNamesTxt = () => {
+    const textContent = places.map((p) => p.name).join("\n");
+    const blob = new Blob([textContent], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `RE-ROUTE_Import_${title.replace(/\s+/g, "_")}.txt`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -102,6 +117,26 @@ export const Header: React.FC = () => {
           )}
         </button>
 
+        <CategorySettingsDropdown />
+
+        {/* Images Toggle */}
+        <button
+          onClick={() => setShowImages(!showImages)}
+          className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors border outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-surface-800 text-surface-700 dark:text-surface-200 border-surface-200 dark:border-surface-600 hover:bg-surface-50 dark:hover:bg-surface-700"
+        >
+          {showImages ? (
+            <>
+              <Image className="w-4 h-4 text-emerald-600 dark:text-emerald-500" />
+              <span>Images On</span>
+            </>
+          ) : (
+            <>
+              <ImageOff className="w-4 h-4 text-surface-400 dark:text-surface-500" />
+              <span>Images Off</span>
+            </>
+          )}
+        </button>
+
         <button
           onClick={handleSave}
           className={`flex items-center gap-2 font-medium text-sm transition-colors ${
@@ -141,13 +176,20 @@ export const Header: React.FC = () => {
           </button>
 
           {/* Dropdown for TXT export on hover */}
-          <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-surface-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 overflow-hidden">
+          <div className="absolute right-0 top-full mt-1 w-56 bg-white border border-surface-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 overflow-hidden flex flex-col">
             <button
               onClick={handleExportTxt}
+              className="w-full text-left px-4 py-3 text-sm text-surface-700 hover:bg-surface-50 hover:text-primary-600 flex items-center gap-2 transition-colors font-medium border-b border-surface-100"
+            >
+              <FileText className="w-4 h-4 shrink-0" />
+              Export Full Details
+            </button>
+            <button
+              onClick={handleExportNamesTxt}
               className="w-full text-left px-4 py-3 text-sm text-surface-700 hover:bg-surface-50 hover:text-primary-600 flex items-center gap-2 transition-colors font-medium"
             >
-              <FileText className="w-4 h-4" />
-              Export Places (TXT)
+              <List className="w-4 h-4 shrink-0" />
+              Export Names Only (For Import)
             </button>
           </div>
         </div>
