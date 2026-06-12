@@ -245,57 +245,75 @@ export async function getSuggestedPlaces(
   };
 
   let candidateSights: any[] = [];
+  const cacheKey = `re_route_suggestions_${center.lat.toFixed(2)}_${center.lng.toFixed(2)}`;
 
   if (appMode === "real") {
-    try {
-      // 1. Get freshly generated suggestions from Gemini AI
-      const aiSuggestions = await suggestSights(center.lat, center.lng, [...Array.from(existingNames), ...rejectedNames]);
+    const cachedData = sessionStorage.getItem(cacheKey);
+    if (cachedData) {
+      try {
+        candidateSights = JSON.parse(cachedData);
+        // Only use cache if we have enough valid un-rejected items
+        const validCached = candidateSights.filter((s) => !isDuplicate(s.name, s.lat, s.lng));
+        if (validCached.length < 3) {
+          candidateSights = []; // Reset to trigger a fresh fetch
+        }
+      } catch (e) {
+        console.warn("Failed to parse cached suggestions", e);
+      }
+    }
 
-      // 2. Map over AI suggestions and fetch authentic photoUrls & exact coords from Google Maps
-      const enrichedSuggestions = await Promise.all(
-        aiSuggestions.map(async (suggestion, idx) => {
-          try {
-            // Search Google Maps using the exact name and AI's estimated coordinates as bias
-            const mapsResult = await searchPlaces(suggestion.name, { lat: suggestion.lat, lng: suggestion.lng });
-            
-            if (mapsResult && mapsResult.length > 0) {
-              const bestMatch = mapsResult[0];
-              return {
-                id: `rec_ai_${idx}_${Date.now()}`,
-                name: bestMatch.name, // Use Google's official name
-                address: bestMatch.address,
-                lat: bestMatch.lat, // Use Google's exact GPS
-                lng: bestMatch.lng,
-                category: suggestion.category, // Keep AI's smart categorization
-                estimatedDuration: suggestion.estimatedDuration,
-                description: suggestion.description, // Keep AI's punchy description
-                types: bestMatch.types,
-                photoUrl: bestMatch.photoUrl, // Inject the authentic Google Maps photo URL!
-              };
+    if (candidateSights.length === 0) {
+      try {
+        // 1. Get freshly generated suggestions from Gemini AI
+        const aiSuggestions = await suggestSights(center.lat, center.lng, [...Array.from(existingNames), ...rejectedNames]);
+
+        // 2. Map over AI suggestions and fetch authentic photoUrls & exact coords from Google Maps
+        const enrichedSuggestions = await Promise.all(
+          aiSuggestions.map(async (suggestion, idx) => {
+            try {
+              // Search Google Maps using the exact name and AI's estimated coordinates as bias
+              const mapsResult = await searchPlaces(suggestion.name, { lat: suggestion.lat, lng: suggestion.lng });
+              
+              if (mapsResult && mapsResult.length > 0) {
+                const bestMatch = mapsResult[0];
+                return {
+                  id: `rec_ai_${idx}_${Date.now()}`,
+                  name: bestMatch.name, // Use Google's official name
+                  address: bestMatch.address,
+                  lat: bestMatch.lat, // Use Google's exact GPS
+                  lng: bestMatch.lng,
+                  category: suggestion.category, // Keep AI's smart categorization
+                  estimatedDuration: suggestion.estimatedDuration,
+                  description: suggestion.description, // Keep AI's punchy description
+                  types: bestMatch.types,
+                  photoUrl: bestMatch.photoUrl, // Inject the authentic Google Maps photo URL!
+                };
+              }
+            } catch (e) {
+              console.warn(`Failed to fetch Google Maps data for ${suggestion.name}`, e);
             }
-          } catch (e) {
-            console.warn(`Failed to fetch Google Maps data for ${suggestion.name}`, e);
-          }
-          
-          // Fallback if Google Maps fails to find this specific AI suggestion
-          return {
-            id: `rec_ai_${idx}_${Date.now()}`,
-            name: suggestion.name,
-            address: "Location in the area",
-            lat: suggestion.lat,
-            lng: suggestion.lng,
-            category: suggestion.category,
-            estimatedDuration: suggestion.estimatedDuration,
-            description: suggestion.description,
-            types: [],
-            photoUrl: undefined,
-          };
-        })
-      );
+            
+            // Fallback if Google Maps fails to find this specific AI suggestion
+            return {
+              id: `rec_ai_${idx}_${Date.now()}`,
+              name: suggestion.name,
+              address: "Location in the area",
+              lat: suggestion.lat,
+              lng: suggestion.lng,
+              category: suggestion.category,
+              estimatedDuration: suggestion.estimatedDuration,
+              description: suggestion.description,
+              types: [],
+              photoUrl: undefined,
+            };
+          })
+        );
 
-      candidateSights = enrichedSuggestions;
-    } catch (err) {
-      console.warn("Failed to fetch suggestions from Gemini API, falling back to local dataset:", err);
+        candidateSights = enrichedSuggestions;
+        sessionStorage.setItem(cacheKey, JSON.stringify(candidateSights));
+      } catch (err) {
+        console.warn("Failed to fetch suggestions from Gemini API, falling back to local dataset:", err);
+      }
     }
   }
 

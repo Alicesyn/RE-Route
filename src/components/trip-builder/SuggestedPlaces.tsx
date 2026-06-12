@@ -36,6 +36,11 @@ export const SuggestedPlaces: React.FC = () => {
       const modeChanged = prevAppModeRef.current !== appMode;
       const hotelsChanged = prevHotelsLengthRef.current !== hotels.length;
 
+      // Don't spam the API on every single dismiss/add unless we are running out of suggestions
+      if (!modeChanged && !hotelsChanged && suggestions.length >= 3) {
+        return;
+      }
+
       // Only show full loading spinner if we are doing a total wipe
       if (modeChanged || hotelsChanged || suggestions.length === 0) {
         setLoading(true);

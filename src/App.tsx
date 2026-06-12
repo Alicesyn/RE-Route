@@ -8,8 +8,8 @@ import { DailySchedule } from "./components/schedule/DailySchedule";
 import { useRouteStore } from "./store/useRouteStore";
 import { solveTSP } from "./services/tspSolver";
 import { Wand2, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
-import { useState, useEffect } from "react";
-import { summarizePlace } from "./services/aiService";
+import { useState, useEffect, useRef } from "react";
+import { summarizePlace, summarizePlacesBatch } from "./services/aiService";
 
 function App() {
   const {
@@ -137,69 +137,113 @@ function App() {
     }
   };
 
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   const handleGenerateDescriptions = async () => {
+    if (isGenerating) {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+      setIsGenerating(false);
+      return;
+    }
+
     setIsGenerating(true);
+    abortControllerRef.current = new AbortController();
 
     // Find places that need real AI descriptions
-    const placesToUpdate = places.filter((p) => p.descriptionSource !== "ai");
+    const placesToUpdate = places.filter(
+      (p) => !p.description || p.description.trim() === ""
+    );
 
     if (placesToUpdate.length === 0) {
       setIsGenerating(false);
       return;
     }
 
+    console.log(`[AI Describe] Starting generation for ${placesToUpdate.length} places...`);
+
     try {
       const updates: { id: string; updates: any }[] = [];
 
-      // Process sequentially to be nice to API rate limits
-      for (const p of placesToUpdate) {
+      // Process sequentially for mock, but batch for real API
+      if (appMode === "real") {
         try {
-          let aiData;
+          console.log(`[AI Describe] Preparing batch request for Gemini API...`);
+          const batchPlaces = placesToUpdate.map(p => ({
+            id: p.id,
+            name: p.name,
+            address: p.address,
+            types: (p as any).types || []
+          }));
 
-          if (appMode === "real") {
-            // Sleep for 4 seconds before hitting API to respect 15 RPM free tier limit
-            await new Promise((resolve) => setTimeout(resolve, 4000));
-            aiData = await summarizePlace(
-              p.name,
-              p.address,
-              (p as any).types || [],
-            );
-          } else {
-            // Simulated AI summary for Mock Mode
-            aiData = {
-              description: `[MOCK AI] This is a simulated high-quality description of ${p.name}. It focuses on the legendary reputation and the vibrant, unique atmosphere of the location.`,
-              category: p.category,
-              estimatedDuration: p.estimatedDuration,
-            };
+          console.log(`[AI Describe] Sending request to Gemini... Please wait.`);
+          const aiDataArray = await summarizePlacesBatch(batchPlaces, 3, abortControllerRef.current.signal);
+          console.log(`[AI Describe] Received response from Gemini! Formatting updates...`);
+
+          for (const p of placesToUpdate) {
+            const aiData = aiDataArray.find((d) => d.id === p.id);
+            if (aiData) {
+              updates.push({
+                id: p.id,
+                updates: {
+                  description: aiData.description,
+                  category: aiData.category,
+                  estimatedDuration: aiData.estimatedDuration,
+                  descriptionSource: "ai" as const,
+                },
+              });
+            } else if (p.editorialSummary) {
+              // Fallback to Google Maps editorial summary if AI missed this place
+              updates.push({
+                id: p.id,
+                updates: {
+                  description: p.editorialSummary,
+                  descriptionSource: "ai" as const,
+                },
+              });
+            }
           }
-
+        } catch (e: any) {
+          if (e.name === 'AbortError') {
+            console.log("AI description generation was aborted by the user.");
+            return;
+          }
+          console.error("Batch processing failed", e);
+          // Fallback everything to editorial summary if the batch call failed
+          for (const p of placesToUpdate) {
+            if (p.editorialSummary) {
+              updates.push({
+                id: p.id,
+                updates: {
+                  description: p.editorialSummary,
+                  descriptionSource: "ai" as const,
+                },
+              });
+            }
+          }
+        }
+      } else {
+        for (const p of placesToUpdate) {
           updates.push({
             id: p.id,
             updates: {
-              description: aiData.description,
-              category: aiData.category,
-              estimatedDuration: aiData.estimatedDuration,
+              description: `[MOCK AI] This is a simulated high-quality description of ${p.name}. It focuses on the legendary reputation and the vibrant, unique atmosphere of the location.`,
+              category: p.category,
+              estimatedDuration: p.estimatedDuration,
               descriptionSource: "ai" as const,
             },
           });
-        } catch (err) {
-          console.error(`Failed to summarize ${p.name}:`, err);
-
-          // Fallback to Google Maps editorial summary if AI fails completely
-          if (p.editorialSummary) {
-            updates.push({
-              id: p.id,
-              updates: {
-                description: p.editorialSummary,
-                descriptionSource: "ai" as const,
-              },
-            });
-          }
         }
       }
 
       if (updates.length > 0) {
+        console.log(`[AI Describe] Saving ${updates.length} descriptions to state...`);
         updatePlacesBulk(updates);
+        console.log(`[AI Describe] Finished!`);
+      } else {
+        console.log(`[AI Describe] Finished with no updates to save.`);
       }
     } catch (err) {
       console.error("AI Batch Processing Error:", err);
@@ -246,14 +290,13 @@ function App() {
                 ) && (
                   <button
                     onClick={handleGenerateDescriptions}
-                    disabled={isGenerating}
-                    className="flex items-center gap-1.5 text-sm font-semibold text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-lg transition-all disabled:opacity-50 disabled:cursor-wait"
-                    title="Auto-generate missing descriptions"
+                    className="flex items-center gap-1.5 text-sm font-semibold text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-lg transition-all"
+                    title={isGenerating ? "Stop generating descriptions" : "Auto-generate missing descriptions"}
                   >
                     <Sparkles
                       className={`w-4 h-4 ${isGenerating ? "animate-pulse" : ""}`}
                     />
-                    {isGenerating ? "Writing..." : "AI Describe"}
+                    {isGenerating ? "Stop AI" : "AI Describe"}
                   </button>
                 )}
                 {places.some((p) => p.dayIndex !== null) && (

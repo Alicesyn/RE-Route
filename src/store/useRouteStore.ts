@@ -1,5 +1,6 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { persist, createJSONStorage, StateStorage } from "zustand/middleware";
+import { get as getIDB, set as setIDB, del as delIDB } from "idb-keyval";
 import {
   Place,
   Hotel,
@@ -125,6 +126,28 @@ interface RouteState extends ModeData {
   loadTrip: (id: string) => void;
   deleteTrip: (id: string) => void;
 }
+
+const idbStorage: StateStorage = {
+  getItem: async (name: string): Promise<string | null> => {
+    const value = await getIDB(name);
+    if (value) {
+      return value;
+    }
+    // Fallback to localStorage for migration
+    const localValue = localStorage.getItem(name);
+    if (localValue) {
+      await setIDB(name, localValue);
+      return localValue;
+    }
+    return null;
+  },
+  setItem: async (name: string, value: string): Promise<void> => {
+    await setIDB(name, value);
+  },
+  removeItem: async (name: string): Promise<void> => {
+    await delIDB(name);
+  },
+};
 
 export const useRouteStore = create<RouteState>()(
   persist(
@@ -618,6 +641,7 @@ export const useRouteStore = create<RouteState>()(
     }),
     {
       name: "reroute-storage",
+      storage: createJSONStorage(() => idbStorage),
     },
   ),
 );

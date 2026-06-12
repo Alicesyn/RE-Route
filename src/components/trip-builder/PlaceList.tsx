@@ -53,22 +53,27 @@ export const PlaceList: React.FC<PlaceListProps> = ({ isExpanded }) => {
     }
   };
 
-  const unassignedCount = places.filter((p) => p.dayIndex === null).length;
-
-  let filteredPlaces =
-    activeTab === "unassigned"
-      ? places.filter((p) => p.dayIndex === null)
-      : places;
+  let baseFilteredPlaces = places;
 
   if (searchQuery.trim()) {
-    filteredPlaces = filteredPlaces.filter((p) =>
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()),
+    const query = searchQuery.toLowerCase();
+    baseFilteredPlaces = baseFilteredPlaces.filter((p) =>
+      p.name.toLowerCase().includes(query) ||
+      p.address?.toLowerCase().includes(query),
     );
   }
 
   if (categoryFilter !== "all") {
-    filteredPlaces = filteredPlaces.filter((p) => p.category === categoryFilter);
+    baseFilteredPlaces = baseFilteredPlaces.filter((p) => p.category === categoryFilter);
   }
+
+  const allCount = baseFilteredPlaces.length;
+  const unassignedCount = baseFilteredPlaces.filter((p) => p.dayIndex === null).length;
+
+  const filteredPlaces =
+    activeTab === "unassigned"
+      ? baseFilteredPlaces.filter((p) => p.dayIndex === null)
+      : baseFilteredPlaces;
 
   if (places.length === 0) {
     return (
@@ -92,7 +97,7 @@ export const PlaceList: React.FC<PlaceListProps> = ({ isExpanded }) => {
               : "text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-200"
           }`}
         >
-          All <span className="ml-1 opacity-60">({places.length})</span>
+          All <span className="ml-1 opacity-60">({allCount})</span>
         </button>
         <button
           onClick={() => setActiveTab("unassigned")}
