@@ -34,6 +34,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { EditPlaceModal } from "./EditPlaceModal";
 
 const formatTime = (totalMinutes: number) => {
   const hours = Math.floor(totalMinutes / 60) % 24;
@@ -106,6 +107,7 @@ interface SortableStopProps {
   currentTime: number;
   dateMode: "fixed" | "duration";
   currentDate: Date;
+  onEdit: () => void;
 }
 
 const SortableStop: React.FC<SortableStopProps> = ({
@@ -116,6 +118,7 @@ const SortableStop: React.FC<SortableStopProps> = ({
   unassignPlace,
   dateMode,
   currentDate,
+  onEdit,
 }) => {
   const timeConflict = 
     dateMode === "fixed" 
@@ -158,9 +161,13 @@ const SortableStop: React.FC<SortableStopProps> = ({
 
       <div className="flex gap-4 relative z-10">
         <div className="relative z-20">
-          <div className="w-10 h-10 rounded-full bg-white dark:bg-surface-800 border-2 border-surface-100 dark:border-surface-700 flex items-center justify-center shrink-0 shadow-sm group-hover:border-primary-500 transition-colors">
+          <button
+            onClick={onEdit}
+            className="w-10 h-10 rounded-full bg-white dark:bg-surface-800 border-2 border-surface-100 dark:border-surface-700 flex items-center justify-center shrink-0 shadow-sm hover:border-primary-500 group-hover:border-primary-500 transition-colors"
+            title="Edit Place Details"
+          >
             <span className="text-sm">{getCategoryEmoji(stop.category)}</span>
-          </div>
+          </button>
 
           {/* Drag Handle */}
           <div
@@ -174,9 +181,13 @@ const SortableStop: React.FC<SortableStopProps> = ({
 
         <div className="flex-1 min-w-0 pt-0.5 pb-4">
           <div className="flex items-center justify-between gap-2 relative">
-            <h4 className="text-sm font-bold text-surface-900 dark:text-white truncate group-hover:text-primary-600 transition-colors pr-8">
+            <button
+              onClick={onEdit}
+              className="text-sm font-bold text-surface-900 dark:text-white truncate hover:text-primary-600 group-hover:text-primary-600 transition-colors pr-8 text-left outline-none focus:ring-2 focus:ring-primary-500 rounded"
+              title="Edit Place Details"
+            >
               {stop.name}
-            </h4>
+            </button>
             <div className="flex items-center gap-1.5 shrink-0">
               {timeConflict.hasConflict && (
                 <div title={`Hours Conflict: ${timeConflict.reason}`}>
@@ -389,6 +400,7 @@ const SegmentPill: React.FC<{
 };
 
 export const DailySchedule: React.FC = () => {
+  const [editingPlaceId, setEditingPlaceId] = useState<string | null>(null);
   const {
     optimizedRoutes,
     optimizeDay,
@@ -435,7 +447,8 @@ export const DailySchedule: React.FC = () => {
   };
 
   return (
-    <div className="schedule-container">
+    <>
+      <div className="schedule-container">
       <div className="px-6 py-3 border-b border-surface-100 dark:border-surface-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-50 dark:bg-surface-800 shrink-0">
         <div className="flex items-center gap-4">
           <h2 className="text-lg font-bold text-surface-900 dark:text-white">
@@ -757,6 +770,7 @@ export const DailySchedule: React.FC = () => {
                                     currentTime={currentTime}
                                     dateMode={dateMode}
                                     currentDate={currentDate}
+                                    onEdit={() => setEditingPlaceId(stop.id)}
                                   />
                                 );
                                 itemDuration = stop.estimatedDuration || 0;
@@ -807,5 +821,12 @@ export const DailySchedule: React.FC = () => {
         })}
       </div>
     </div>
+      {editingPlaceId && (
+        <EditPlaceModal
+          placeId={editingPlaceId}
+          onClose={() => setEditingPlaceId(null)}
+        />
+      )}
+    </>
   );
 };

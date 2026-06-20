@@ -382,8 +382,8 @@ export const useRouteStore = create<RouteState>()(
 
       // Day assignment actions
       assignPlaceToDay: (placeId, dayIndex) =>
-        set((state) => ({
-          places: state.places.map((p) =>
+        set((state) => {
+          const newPlaces = state.places.map((p) =>
             p.id === placeId
               ? {
                   ...p,
@@ -394,8 +394,38 @@ export const useRouteStore = create<RouteState>()(
                   pinnedToDay: true,
                 }
               : p,
-          ),
-        })),
+          );
+
+          let newRoutes = [...state.optimizedRoutes];
+          const dayPlaces = newPlaces.filter((p) => p.dayIndex === dayIndex);
+          
+          const idx = newRoutes.findIndex((r) => r.day === dayIndex);
+          let manualSequence: string[] | undefined = undefined;
+
+          if (idx >= 0 && newRoutes[idx].manualSequence) {
+             manualSequence = [...newRoutes[idx].manualSequence, placeId];
+          }
+
+          const result = solveSingleDay(
+            dayPlaces,
+            state.hotels,
+            dayIndex,
+            state.travelMode,
+            dayIndex === 0 && state.showFlights ? state.arrivalFlight?.location : null,
+            dayIndex === state.days - 1 && state.showFlights ? state.departureFlight?.location : null,
+            !!manualSequence,
+            manualSequence
+          );
+          
+          if (idx >= 0) {
+             newRoutes[idx] = result;
+          } else {
+             newRoutes.push(result);
+             newRoutes.sort((a, b) => a.day - b.day);
+          }
+
+          return { places: newPlaces, optimizedRoutes: newRoutes };
+        }),
 
       unassignPlace: (placeId) =>
         set((state) => {
@@ -412,6 +442,13 @@ export const useRouteStore = create<RouteState>()(
           if (dayIndex !== null && dayIndex !== undefined) {
             // Re-solve the day to remove the stop and update segments
             const dayPlaces = newPlaces.filter((p) => p.dayIndex === dayIndex);
+            
+            const idx = newRoutes.findIndex((r) => r.day === dayIndex);
+            let manualSequence: string[] | undefined = undefined;
+            if (idx >= 0 && newRoutes[idx].manualSequence) {
+               manualSequence = newRoutes[idx].manualSequence.filter(id => id !== placeId);
+            }
+
             const result = solveSingleDay(
               dayPlaces,
               state.hotels,
@@ -423,8 +460,9 @@ export const useRouteStore = create<RouteState>()(
               dayIndex === state.days - 1 && state.showFlights
                 ? state.departureFlight?.location
                 : null,
+              !!manualSequence,
+              manualSequence
             );
-            const idx = newRoutes.findIndex((r) => r.day === dayIndex);
             if (idx >= 0) newRoutes[idx] = result;
           }
 

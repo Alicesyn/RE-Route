@@ -343,7 +343,7 @@ function buildDayRoute(
     });
   }
 
-  const dayTravelTime = estimateTime(dayDist, travelMode);
+  const dayTravelTime = segments.reduce((sum, s) => sum + s.time, 0);
   const dayVisitTime = optimizedPlaces.reduce(
     (sum, p) => sum + (p.estimatedDuration ?? 60) * 60,
     0,
