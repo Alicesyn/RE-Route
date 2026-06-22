@@ -59,7 +59,7 @@ function App() {
       if (showFlights) {
         if (isFirstDay && arrivalFlight) {
           const [arrH, arrM] = arrivalFlight.time.split(":").map(Number);
-          const arrivalTotal = arrH * 60 + arrM + arrivalFlight.buffer;
+          const arrivalTotal = arrH * 60 + arrM;
           const dayStartTotal = startH * 60 + startM;
           const effectiveStart = Math.max(dayStartTotal, arrivalTotal);
 
@@ -69,17 +69,26 @@ function App() {
         }
         if (isLastDay && departureFlight) {
           const [depH, depM] = departureFlight.time.split(":").map(Number);
-          const depTotal = depH * 60 + depM - departureFlight.buffer;
-          const dayEndTotal = endH * 60 + endM;
+          const depTotal = depH * 60 + depM;
+          // Handle overnight: if dayEndTime is "00:00" (midnight), treat as 1440 (next-day midnight)
+          const rawDayEnd = endH * 60 + endM;
+          const dayEndTotal = rawDayEnd === 0 ? 24 * 60 : rawDayEnd;
           const effectiveEnd = Math.min(dayEndTotal, depTotal);
 
           let available = effectiveEnd - (startH * 60 + startM);
           if (available < 0) available += 24 * 60;
           dayAvailableMinutes = available;
+          console.log(`[RE-Route] Departure day (i=${i}): depTotal=${depTotal}, dayEndTotal=${dayEndTotal}, effectiveEnd=${effectiveEnd}, available=${available}`);
+        }
+        if (isLastDay) {
+          console.log(`[RE-Route] Last day check: i=${i}, days=${days}, isLastDay=${isLastDay}, departureFlight=${JSON.stringify(departureFlight)}, budget=${dayAvailableMinutes}`);
         }
       }
       return dayAvailableMinutes;
     });
+
+
+    console.log('[RE-Route] dayBudgets:', dayBudgets, '| showFlights:', showFlights, '| departureFlight:', departureFlight);
 
     const result = solveTSP(
       places,

@@ -130,7 +130,14 @@ function clusterPlaces(
         dayTimeUsed[d] + (place.estimatedDuration ?? 60) + travelMin;
       const remaining = dailyBudgets[d] - totalIfAdded;
 
-      if (!strictBudget || remaining >= 0) {
+      const isArrivalDay = d === 0;
+      const isDepartureDay = d === days - 1;
+      // Force strict if this day has a reduced budget (e.g. due to a flight cutoff)
+      const baseBudget = dailyBudgets.length > 0 ? Math.max(...dailyBudgets) : dailyBudgets[d];
+      const dayIsConstrained = dailyBudgets[d] < baseBudget;
+      const forceStrict = strictBudget || dayIsConstrained;
+
+      if (!forceStrict || remaining >= 0) {
         let score = remaining;
 
         // Apply min limit boost if this day is below the minimum
@@ -428,16 +435,27 @@ export function solveTSP(
     );
 
     const limit = dailyBudgets[d];
+    
+    // Force strict eviction on any day whose budget was reduced below the maximum
+    // (e.g. flight departure/arrival days), regardless of the global strictBudget toggle.
+    const baseBudget = Math.max(...dailyBudgets);
+    const forceStrict = strictBudget || limit < baseBudget;
 
-    if (strictBudget) {
+    if (forceStrict) {
       let totalDayMin =
         dayPlaces.reduce((sum, p) => sum + (p.estimatedDuration ?? 60), 0) +
         Math.round(route.totalTime / 60);
 
+      // On flight-constrained days, flights are a hard physical deadline.
+      // Treat all places as evictable (even user-pinned ones).
+      const flightConstrained = limit < baseBudget;
+
       while (dayPlaces.length > 0 && totalDayMin > limit) {
-        const evictable = dayPlaces.filter((p) => !p.pinnedToDay);
+        const evictable = flightConstrained
+          ? dayPlaces
+          : dayPlaces.filter((p) => !p.pinnedToDay);
         if (evictable.length === 0) {
-          break; // only pinned places left
+          break; // only pinned places left and not a flight day
         }
 
         // Evict the last evictable place (lowest priority/greedy order)

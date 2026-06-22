@@ -520,10 +520,10 @@ export const DailySchedule: React.FC = () => {
           if (showFlights) {
             if (isFirstDay && arrivalFlight) {
               const [arrH, arrM] = arrivalFlight.time.split(":").map(Number);
-              const arrivalTotal = arrH * 60 + arrM + arrivalFlight.buffer;
+              const arrivalTotal = arrH * 60 + arrM;
               const dayStartTotal = startH * 60 + startM;
               const effectiveStart = Math.max(dayStartTotal, arrivalTotal);
-              currentTime = effectiveStart; // Day starts after flight + buffer
+              currentTime = effectiveStart; // Day starts after flight
 
               let available = endH * 60 + endM - effectiveStart;
               if (available < 0) available += 24 * 60;
@@ -531,8 +531,10 @@ export const DailySchedule: React.FC = () => {
             }
             if (isLastDay && departureFlight) {
               const [depH, depM] = departureFlight.time.split(":").map(Number);
-              const depTotal = depH * 60 + depM - departureFlight.buffer;
-              const dayEndTotal = endH * 60 + endM;
+              const depTotal = depH * 60 + depM;
+              // Handle overnight: if dayEndTime is "00:00" (midnight), treat as 1440
+              const rawDayEnd = endH * 60 + endM;
+              const dayEndTotal = rawDayEnd === 0 ? 24 * 60 : rawDayEnd;
               const effectiveEnd = Math.min(dayEndTotal, depTotal);
 
               let available = effectiveEnd - (startH * 60 + startM);
